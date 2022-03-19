@@ -13,15 +13,12 @@ from SemesterProject2.agents.policies.argmax_policy import ArgmaxPolicy
 class RLTrainer(object):
     def __init__(self, params):
         """
-        params: (agent_params (including opt_params))
-            bash script: log_dir, env, if_notebook, ep_len, agent_class, (video_interval) (use print_interval),
-            print_interval, batch_size (process from configs (changed to be in configs)), num_agent_train_steps_per_itr,
-            eval_batch_size, save_filename, (reset_interval), seed, if_double_q, model_name
+        params: only bash params
+            model_name, ep_len, print_interval, num_agent_train_steps_per_itr, eval_batch_size, seed, if_double_q,
+            if_notebook, agent_class, log_dir, save_filename
         """
         self.params = params
         self.writer = SummaryWriter(log_dir=self.params["log_dir"])
-        # self.env = gym.make(self.params["env"])
-        # self.eval_env = gym.make(self.params["env"])
         self.env_params = configs.get_env_config(self.params["model_name"])
         self.params.update(self.env_params)
         self.env = configs.get_env(self.params["model_name"])
@@ -31,6 +28,7 @@ class RLTrainer(object):
         self.initial_train_average_reward = 0
         self.eps = self.env_params["eps_start"]
         self.env.seed(self.params["seed"])
+        self.best_avg_eval_rewards = -float("inf")
 
     def run_training_loop(self, n_itr, collect_policy, eval_policy):
         np.random.seed(self.params["seed"])
@@ -65,7 +63,8 @@ class RLTrainer(object):
 
             if if_print:
                 self.perform_logging(itr, paths, eval_policy, video_paths, all_logs, if_print=if_print)
-                self.agent.save(self.params["save_filename"])  # TODO: save only the latest model
+                # model saving delegated to logging
+                # self.agent.save(self.params["save_filename"])
 
     def dqn_train_itr(self):
         rewards = 0
@@ -169,6 +168,12 @@ class RLTrainer(object):
             if if_print:
                 print(f"{key}: {val:.3f}")
         self.writer.flush()
+
+        # save the best model
+        if log["eval_average_reward"] > self.best_avg_eval_rewards:
+            print("saving model...")
+            self.best_avg_eval_rewards = log["eval_average_reward"]
+            self.agent.save(self.params["save_filename"])
 
     def _log_video(self, itr, tag, paths):
         # print(paths[0]["image_obs"].shape)
