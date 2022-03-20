@@ -14,6 +14,12 @@ def network_initializer(model_name):
     elif model_name == "LunarLanderImg":
         network = LunarLanderConv(**network_config).to(ptu.device)
 
+    elif model_name == "CartPole":
+        network = MLP(**network_config).to(ptu.device)
+
+    elif model_name == "CartPoleImg":
+        network = CartPoleConv(**network_config).to(ptu.device)
+
     opt = opt_config["constructor"](network.parameters(), **opt_config["optimizer_config"])
     loss = opt_config["loss"]()
 
@@ -72,3 +78,30 @@ class LunarLanderConv(nn.Module):
         X = X.squeeze(dim=-1)
 
         return X
+
+
+class CartPoleConv(nn.Module):
+    def __init__(self, act_dim, input_size=(3, 400, 600)):
+        super(CartPoleConv, self).__init__()
+        self.input_size = input_size
+        self.act_dim = act_dim
+        self.convs = nn.Sequential(
+            nn.Conv2d(self.input_size[0], 16, kernel_size=5, stride=2),
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+            nn.Conv2d(16, 32, kernel_size=5, stride=2),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(32, 32, kernel_size=3),
+            nn.BatchNorm2d(32),
+            nn.ReLU()
+        )
+        self.fc = nn.Conv2d(32, self.act_dim, kernel_size=1)
+
+    def forward(self, X):
+        # X: (B, C, H, W)
+        X = self.convs(X)  # (B, C', H', W')
+        X = X.mean(dim=[2, 3], keepdims=True)
+        X = self.fc(X)  # (B, N_act, 1, 1)
+
+        return X.squeeze(-1).squeeze(-1)

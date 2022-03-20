@@ -34,10 +34,10 @@ def sample_trajectory(env: gym.Env, policy, max_path_length, render=False):
     """
     obs, image_obs, acts, next_obs, rews, terminals = [], [], [], [], [], []
 
-    ob = env.reset()  # TODO: uncomment
+    ob = env.reset()
     for _ in range(max_path_length):
         obs.append(ob)
-        act = policy.get_action(ob)  # TODO: write a random policy (done)
+        act = policy.get_action(ob)
         acts.append(act)
         ob, rew, done, _ = env.step(act)
         if render:

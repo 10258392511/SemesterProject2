@@ -12,19 +12,16 @@ from SemesterProject2.helpers.utils import Path
 
 class DQNAgent(BaseAgent):
     def __init__(self, hparams):
-        # hparams: bash params: if_double_q, network_name
+        """
+        hparams: bash params: if_double_q, network_name
+                 env params: grad_clamp_val
+        """
         self.hparams = hparams
-        # self.q_net = network_initializer(**configs.lunar_lander_env_params["network_params"])
-        # self.q_net_target = network_initializer(**configs.lunar_lander_env_params["network_params"])
-
         self.q_net, self.optimizer, self.loss = network_initializer(self.hparams["model_name"])
         self.q_net_target, _, _ = network_initializer(self.hparams["model_name"])
         for param, param_target in zip(self.q_net.parameters(), self.q_net_target.parameters()):
             param_target.data.copy_(param.data)
         self.q_net_target.eval()
-
-        # self.optimizer = configs.lunar_lander_opt_params["constructor"](self.q_net.parameters(),
-        #                                                                 **configs.lunar_lander_opt_params["optimizer_config"])
 
         self.env_params = configs.get_env_config(self.hparams["model_name"])
         self.replay_buffer = ReplayBuffer(self.env_params["replay_buffer_size"])
@@ -72,6 +69,9 @@ class DQNAgent(BaseAgent):
         loss = self.loss(est_current, labels_current)
         self.optimizer.zero_grad()
         loss.backward()
+        if "grad_clamp_val" in self.env_params:
+            # print("clamping gradient")
+            nn.utils.clip_grad_value_(self.q_net.parameters(), self.hparams["grad_clamp_val"])
         self.optimizer.step()
 
         tau = self.env_params["tau"]
