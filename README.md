@@ -6,7 +6,7 @@ pip install -e .
 Preliminary experiments:
 - CartPole-v0:
   
-  <img src="results/dqn_cart_pole/dqn_cart_pole_episode_1.gif" style="width: 49%">
+  <img src="results/dqn_cart_pole/dqn_cart_pole_episode_1.gif" style="width: 30%, display: inline, text-align: center">
   <figcaption style="text-align: center">Before Training</figcaption>
   <img src="results/dqn_cart_pole/dqn_cart_pole_episode_300.gif" style="width: 49%">
   <figcaption style="text-align: center">After Training</figcaption>
