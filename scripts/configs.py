@@ -160,7 +160,7 @@ cart_pole_opt_params = {
 cart_pole_img_env_params = base_env_params.copy()
 cart_pole_img_env_params.update({
     "replay_buffer_size": 50000,
-    "batch_size": 32,
+    "batch_size": 256,
     "gamma": 0.999,
     "update_freq": 1,
     "eps_start": 1,
@@ -169,7 +169,7 @@ cart_pole_img_env_params.update({
     "tau": 0.001,
     "max_num_videos": 1,
     "max_video_len": 400,
-    "input_shape": (50, 75),  # (400, 600, 3)
+    "input_shape": (48, 48),  # (400, 600, 3)
     "grad_clamp_val": 1
 })
 
@@ -180,8 +180,8 @@ cart_pole_img_conv_params = {
 
 cart_pole_img_opt_params = {
     "constructor": torch.optim.Adam,
-    "optimizer_config": {"lr": 1e-3},
-    "loss": nn.SmoothL1Loss
+    "optimizer_config": {"lr": 5e-3},
+    "loss": nn.MSELoss
 }
 
 if __name__ == '__main__':

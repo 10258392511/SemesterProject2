@@ -86,17 +86,17 @@ class CartPoleConv(nn.Module):
         self.input_size = input_size
         self.act_dim = act_dim
         self.convs = nn.Sequential(
-            nn.Conv2d(self.input_size[0], 16, kernel_size=5, stride=2),
+            nn.Conv2d(self.input_size[0], 8, kernel_size=5, stride=2),
+            nn.BatchNorm2d(8),
+            nn.ReLU(),
+            nn.Conv2d(8, 16, kernel_size=5, stride=2),
             nn.BatchNorm2d(16),
             nn.ReLU(),
-            nn.Conv2d(16, 32, kernel_size=5, stride=2),
-            nn.BatchNorm2d(32),
-            nn.ReLU(),
-            nn.Conv2d(32, 32, kernel_size=3),
-            nn.BatchNorm2d(32),
+            nn.Conv2d(16, 16, kernel_size=3),
+            nn.BatchNorm2d(16),
             nn.ReLU()
         )
-        self.fc = nn.Conv2d(32, self.act_dim, kernel_size=1)
+        self.fc = nn.Conv2d(16, self.act_dim, kernel_size=1)
 
     def forward(self, X):
         # X: (B, C, H, W)
