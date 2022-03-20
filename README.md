@@ -13,4 +13,3 @@ Preliminary experiments:
   
   <img src="results/dqn_lunar_lander/dqn_lunar_lander_episode_1.gif" style="width: 42%" alt="LunarLander Before Training">
   <img src="results/dqn_lunar_lander/dqn_lunar_lander_episode_500.gif" style="width: 42%" alt="LunarLander After Training">
- 

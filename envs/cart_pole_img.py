@@ -17,13 +17,13 @@ class CartPoleImg(CartPoleEnv):
     def preprocess_(self, img):
         cart_roi = self.get_cart_roi_(img)
 
-        img_obs = rgb2gray(cart_roi)
-        img_obs = resize(img_obs, resized_shape)
-        return img_obs[None, ...]
+        # img_obs = rgb2gray(cart_roi)
+        # img_obs = resize(img_obs, resized_shape)
+        # return img_obs[None, ...]
 
-        # img_obs = cart_roi
-        # img_obs = resize(img_obs, resized_shape).transpose(2, 0, 1)
-        # return img_obs
+        img_obs = cart_roi
+        img_obs = resize(img_obs, resized_shape).transpose(2, 0, 1)
+        return img_obs
 
 
 

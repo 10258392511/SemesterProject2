@@ -174,7 +174,7 @@ cart_pole_img_env_params.update({
 })
 
 cart_pole_img_conv_params = {
-    "input_size": (1, *cart_pole_img_env_params["input_shape"]),
+    "input_size": (3, *cart_pole_img_env_params["input_shape"]),
     "act_dim": 2
 }
 
