@@ -179,8 +179,8 @@ cart_pole_img_conv_params = {
 }
 
 cart_pole_img_opt_params = {
-    "constructor": torch.optim.Adam,
-    "optimizer_config": {"lr": 5e-3},
+    "constructor": torch.optim.RMSprop,
+    "optimizer_config": {"lr": 1e-3},
     "loss": nn.MSELoss
 }
 
