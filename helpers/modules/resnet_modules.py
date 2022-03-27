@@ -39,7 +39,6 @@ class BasicBlock(AbstractBlock):
         )
 
 
-
 class BottleneckBlock(AbstractBlock):
     def __init__(self, in_channels, out_channels, if_downsample=False):
         assert in_channels % 2 == 0 and out_channels % 2 == 0

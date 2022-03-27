@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 from SemesterProject2.helpers.modules.resnet_modules import AbstractBlock
@@ -12,7 +13,7 @@ class ResNet(nn.Module):
         self.block_type = block_type
 
         self.first_conv = nn.Sequential(
-            nn.Conv2d(in_channels, start_num_channels, kernel_size=7, stride=2, padding=3),
+            nn.Conv2d(in_channels, start_num_channels, kernel_size=3, stride=2, padding=1),
             nn.BatchNorm2d(start_num_channels),
             nn.ReLU()
         )
@@ -29,7 +30,7 @@ class ResNet(nn.Module):
         self.init_modules_()
 
     def forward(self, X):
-        # X: (B, Cin, H, W)
+        # X: (B, C_in, H, W)
         X = self.first_conv(X)  # down 2, C_start
         X = self.first_pool(X)  # down 4, C_start
         X = self.blocks(X)  # down 4 * 2 ^ 3 = 32, C_start * 8
@@ -39,10 +40,11 @@ class ResNet(nn.Module):
         return X.squeeze(-1).squeeze(-1)
 
     def init_modules_(self):
+        pass
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
                 nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 0)
+                nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)

@@ -92,17 +92,17 @@ def record_gif(frames, save_filename, **kwargs):
 
 def create_log_dir_name(timestamp: str, param_dict: dict):
     """
-     param_dict should be corrected set up out of the scope. E.g., {"lr": f"{val:.3f}"}
+     param_dict should be correctly set up out of the scope. E.g., {"lr": f"{val:.3f}"}
     """
     dirname = timestamp.replace(".", "_")
     for key, val in param_dict.items():
         dirname += f"_{key}_{val}".replace(".", "_")
 
-    # remove the last "_"
     return dirname
 
 
 def create_param_dir(dirname, pt_filename):
-    os.makedirs(dirname)
+    if not os.path.isdir(dirname):
+        os.makedirs(dirname)
 
     return os.path.join(dirname, pt_filename)
