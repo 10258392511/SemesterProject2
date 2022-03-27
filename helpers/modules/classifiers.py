@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 
 from SemesterProject2.helpers.modules.resnet_modules import AbstractBlock
+from SemesterProject2.helpers.modules.vit_modules import PatchEmbed, Block
 
 
 class ResNet(nn.Module):
@@ -48,3 +49,32 @@ class ResNet(nn.Module):
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
+
+
+class ViT(nn.Module):
+    def __init__(self, img_size=(1, 256, 256), patch_size=16, num_classes=10, emb_dim=512, depth=12, num_heads=8,
+                 mlp_ratio=4, attn_p=0.1, proj_p=0.1):
+        assert img_size[1] == img_size[2] and img_size[1] % patch_size == 0
+        super(ViT, self).__init__()
+        self.patch_emb = PatchEmbed(img_size, patch_size, emb_dim)
+        num_patches = img_size[1] // patch_size
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, emb_dim))
+        self.pos_token = nn.Parameter(torch.zeros(1, num_patches ** 2 + 1, emb_dim))
+        self.drop = nn.Dropout(proj_p)
+        blocks = [Block(emb_dim, num_heads, mlp_ratio, attn_p, proj_p) for _ in range(depth)]
+        self.blocks = nn.Sequential(*blocks)
+        self.norm = nn.LayerNorm(emb_dim)
+        self.head = nn.Linear(emb_dim, num_classes)
+
+    def forward(self, X):
+        # X: (B, C, H, W)
+        X = self.patch_emb(X)   # (B, N, N_emb)
+        X = torch.cat([self.cls_token.expand(X.shape[0], -1, -1), X], dim=1)  # (1, 1, N_emb) -> (B, 1, N_emb) --> (B, N + 1, N_emb)
+        X = X + self.pos_token  # (B, N + 1, N_emb) + (1, N + 1, N_emb) -> (B, N + 1, N_emb)
+        X = self.drop(X)
+        X = self.blocks(X)
+        X = self.norm(X)  # (B, N + 1, N_emb)
+        X = X[:, 0, :]  # (B, N_emb)
+        X = self.head(X)  # (B, N_classes)
+
+        return X

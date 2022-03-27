@@ -192,3 +192,14 @@ class ResNetTrainer(ClassifierTrainer):
         fig = super().end_epoch_eval_(epoch)
 
         return fig
+
+
+class ViTTrainer(ClassifierTrainer):
+    def __init__(self, model, train_loader, test_loader, train_params, log_params):
+        super(ViTTrainer, self).__init__(model, train_loader, test_loader, train_params, log_params)
+
+    @torch.no_grad()
+    def end_epoch_eval_(self, epoch):
+        fig = super().end_epoch_eval_(epoch)
+
+        return fig
