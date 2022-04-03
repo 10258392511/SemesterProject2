@@ -2,9 +2,11 @@ import torch
 import torch.nn as nn
 import SemesterProject2.helpers.pytorch_utils as ptu
 import SemesterProject2.scripts.configs as configs
+import SemesterProject2.scripts.configs_ac as configs_ac
 
 
 def network_initializer(model_name):
+    # for DDQN
     network_config, opt_config = configs.get_network_config(model_name)
 
     network = None
@@ -24,6 +26,21 @@ def network_initializer(model_name):
     loss = opt_config["loss"]()
 
     return network, opt, loss
+
+
+def network_initializer_ac(model_name: str, network_type):
+    assert network_type in ["actor", "critic"]
+    # for AC
+    actor_network_config, critic_network_config, _, _ = \
+        configs_ac.get_network_config(model_name)
+
+    if model_name == "LunarLander-continuous":
+        if network_type == "actor":
+            net = MLP(**actor_network_config).to(ptu.device)
+        else:
+            net = MLP(**critic_network_config).to(ptu.device)
+
+    return net
 
 
 class MLP(nn.Module):
