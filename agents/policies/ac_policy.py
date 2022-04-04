@@ -13,7 +13,8 @@ from SemesterProject2.helpers.networks import network_initializer_ac
 class ACPolicy(BasePolicy, nn.Module):
     def __init__(self, params):
         """
-        params: model_name, **env_params, **bash_args
+        params: **env_params,
+            bash_args: model_name
         """
         super(ACPolicy, self).__init__()
         self.params = params

@@ -22,23 +22,31 @@ def get_env(model_name: str):
 
 
 base_env_params = {
-    "opt_dim": None,
+    "obs_dim": None,
     "act_dim": None,
     "replay_buffer_size": None,
     "batch_size": None,
     "num_target_updates": None,
     "num_grad_steps_per_target_update": None,
     "num_critic_updates_per_agent_update": None,
-    "num_actor_updates_per_agent_update": None
+    "num_actor_updates_per_agent_update": None,
+    "gamma": None
 }
 
 ##########################################################
 # LunarLander-v2, continuous
 lunar_lander_env_params = base_env_params.copy()
 lunar_lander_env_params.update({
-    "opt_dim": 8,
-    "act_dim": 2
-})  # TODO
+    "obs_dim": 8,
+    "act_dim": 2,
+    "replay_buffer_size": 50000,
+    "batch_size": 1000,
+    "num_target_updates": 10,
+    "num_grad_steps_per_target_update": 10,
+    "num_critic_updates_per_agent_update": 1,
+    "num_actor_updates_per_agent_update": 1,
+    "gamma": 0.999
+})
 
 lunar_lander_critic_mlp_params = {
     "obs_dim": 8,
