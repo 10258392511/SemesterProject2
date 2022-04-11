@@ -8,8 +8,8 @@ class BaseAgent(object):
     def sample(self, batch_size):
         raise NotImplementedError
 
-    def save(self, filename):
+    def save(self, filename, *args, **kwargs):
         raise NotImplementedError
 
-    def load(self, filename):
+    def load(self, filename, *args, **kwargs):
         raise NotImplementedError

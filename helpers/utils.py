@@ -42,6 +42,7 @@ def sample_trajectory(env: gym.Env, policy, max_path_length, render=False):
         ob, rew, done, _ = env.step(act)
         if render:
             image_obs.append(env.render(mode="rgb_array"))
+            # env.render()
         next_obs.append(ob)
         rews.append(rew)
         terminals.append(bool(done))

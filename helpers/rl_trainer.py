@@ -1,7 +1,7 @@
 import gym
 import numpy as np
 import torch
-import SemesterProject2.scripts.configs as configs
+# import SemesterProject2.scripts.configs as configs
 
 from torch.utils.tensorboard import SummaryWriter
 from collections import OrderedDict
@@ -10,14 +10,29 @@ from SemesterProject2.agents.dqn_agent import DQNAgent
 from SemesterProject2.agents.policies.argmax_policy import ArgmaxPolicy
 
 
+# def get_configs(alg="DQN"):
+#     if alg == "DQN":
+#         import SemesterProject2.scripts.configs as configs
+#     elif alg == "AC":
+#         import SemesterProject2.scripts.configs_ac as configs
+
+
 class RLTrainer(object):
     def __init__(self, params):
         """
         params: only bash params
-            model_name, ep_len, print_interval, num_agent_train_steps_per_itr, eval_batch_size, seed, if_double_q,
+            alg, model_name, ep_len, print_interval, num_agent_train_steps_per_itr, eval_batch_size, seed,
             if_notebook, agent_class, log_dir, save_filename
+            DQN:
+                if_double_q
         """
         self.params = params
+        alg = self.params.get("alg", "DQN")
+        if alg == "DQN":
+            import SemesterProject2.scripts.configs as configs
+        elif alg == "AC":
+            import SemesterProject2.scripts.configs_ac as configs
+
         self.writer = SummaryWriter(log_dir=self.params["log_dir"])
         self.env_params = configs.get_env_config(self.params["model_name"])
         self.params.update(self.env_params)
@@ -26,7 +41,8 @@ class RLTrainer(object):
         self.agent = self.params["agent_class"](self.params)
         self.total_envsteps = 0
         self.initial_train_average_reward = 0
-        self.eps = self.env_params["eps_start"]
+        if alg == "DQN":
+            self.eps = self.env_params["eps_start"]
         self.env.seed(self.params["seed"])
         self.best_avg_eval_rewards = -float("inf")
 
@@ -126,8 +142,8 @@ class RLTrainer(object):
         print("Collecting eval video...")
         eval_video_paths = sample_n_trajectories(self.eval_env, eval_policy, self.env_params["max_num_videos"],
                                                  self.env_params["max_video_len"], render=True)
-        self.env.close()
-        self.eval_env.close()
+        # self.env.close()
+        # self.eval_env.close()
         # self.env = gym.make(self.params["env"])
         # self.eval_env = gym.make(self.params["env"])
 

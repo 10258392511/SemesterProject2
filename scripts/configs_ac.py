@@ -30,7 +30,9 @@ base_env_params = {
     "num_grad_steps_per_target_update": None,
     "num_critic_updates_per_agent_update": None,
     "num_actor_updates_per_agent_update": None,
-    "gamma": None
+    "gamma": None,
+    "max_num_videos": None,
+    "max_video_len": None
 }
 
 ##########################################################
@@ -40,12 +42,14 @@ lunar_lander_env_params.update({
     "obs_dim": 8,
     "act_dim": 2,
     "replay_buffer_size": 50000,
-    "batch_size": 1000,
+    "batch_size": 256,
     "num_target_updates": 10,
     "num_grad_steps_per_target_update": 10,
     "num_critic_updates_per_agent_update": 1,
     "num_actor_updates_per_agent_update": 1,
-    "gamma": 0.999
+    "gamma": 0.999,
+    "max_num_videos": 1,
+    "max_video_len": 600
 })
 
 lunar_lander_critic_mlp_params = {

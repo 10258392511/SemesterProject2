@@ -19,8 +19,10 @@ class ACAgent(BaseAgent):
         self.critic = ACCritic(self.params)
         self.replay_buffer = ReplayBuffer(params["replay_buffer_size"])
 
-    def train(self, obs, acts, next_obs, rewards, terminals) -> dict:
+    def train(self, obs, acts, rewards, next_obs, terminals) -> dict:
         loss_dict = {}
+        if not self.replay_buffer.can_sample(self.params["batch_size"]):
+            return loss_dict
         for _ in range(self.params["num_critic_updates_per_agent_update"]):
             loss_critic_dict = self.critic.update(obs, acts, next_obs, rewards, terminals)
 
@@ -53,3 +55,14 @@ class ACAgent(BaseAgent):
 
     def sample(self, batch_size):
         return self.replay_buffer.sample_recent_data(batch_size)
+
+    def save(self, filename, *args, **kwargs):
+        # filename: dict for AC, keys: actor_filename, critic_filename
+        torch.save(self.actor.state_dict(), filename["actor_filename"])
+        torch.save(self.critic.state_dict(), filename["critic_filename"])
+
+    def load(self, filename, *args, **kwargs):
+        self.actor.load_state_dict(torch.load(filename["actor_filename"]))
+        self.actor.eval()
+        self.critic.load_state_dict(torch.load(filename["critic_filename"]))
+        self.critic.eval()
