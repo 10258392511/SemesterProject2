@@ -1,9 +1,10 @@
 import numpy as np
-import pandas as pd
+import matplotlib.pyplot as plt
 import SimpleITK as sitk
 import os
 import re
 import pickle
+import h5py
 import SemesterProject2.scripts.configs_data_aug as configs_data_aug
 
 from torch.utils.data import Dataset
@@ -12,7 +13,60 @@ from pprint import pprint
 
 
 class VolumetricDataset(Dataset):
-    pass
+    def __init__(self, hdf5_filename, train_test_filename, mode="train"):
+        assert mode in ["train", "test"], "invalid mode"
+        super(VolumetricDataset, self).__init__()
+        self.file = h5py.File(hdf5_filename)
+        self.mode = mode
+        with open(train_test_filename, "rb") as rf:
+            all_pids = pickle.load(rf)
+
+        self.data_dict = all_pids["train"] if self.mode == "train" else all_pids["test"]
+        self.pids = all_pids["train_pids"] if self.mode == "train" else all_pids["test_pids"]
+
+    def __del__(self):
+        self.file.close()
+
+    def __len__(self):
+        return len(self.pids)
+
+    def __getitem__(self, index):
+        pid = self.pids[index]
+        patient_dict = self.data_dict[pid]
+        vol = np.array(self.file.get(patient_dict["volume"]))
+        bbox = np.array(self.file.get(patient_dict["bbox"]))
+        seg = np.array(self.file.get(patient_dict["mask"]))
+        # (x_min, y_min, z_min, width, height, depth)
+        bbox_coord = np.array(self.file.get(patient_dict["bbox_coord"]))
+
+        vol = normalize_volume(vol)
+        if self.mode == "test":
+            return vol, seg, bbox, bbox_coord
+
+        vol_aug, seg_aug = close_crop(vol, seg)
+        vol_aug, seg_aug = spatial_transform(vol_aug, seg_aug)
+        vol_aug, seg_aug = intensity_transform(vol_aug, seg_aug)
+
+        return vol_aug, seg_aug
+
+
+def visualize(vols, z, if_notebook=True, **kwargs):
+    vol, seg = vols[:2]
+    assert 0 <= z < vol.shape[0], "invalid slice number"
+    for vol_iter in vols:
+        assert vol_iter.shape == vol.shape, "shape mismatch"
+
+    figsize = kwargs.get("figsize", (3.6 * len(vols), 4.8))
+    fraction = kwargs.get("fraction", 0.2)
+    fig, axes = plt.subplots(1, len(vols), figsize=figsize)
+    imgs = [vol_iter[z, ...] for vol_iter in vols]
+    for img, axis in zip(imgs, axes):
+        handle = axis.imshow(img, cmap="gray")
+        plt.colorbar(handle, ax=axis, fraction=fraction)
+
+    fig.tight_layout()
+    if not if_notebook:
+        plt.show()
 
 
 def train_test_split_and_sort_by_pid():
@@ -61,7 +115,7 @@ def train_test_split_and_sort_by_pid():
                     matches = pattern.findall(filename)
                     if len(matches) > 0:
                         # key: "volumne", ...
-                        dataset_dict[pid_iter][key] = matches[0]
+                        dataset_dict[pid_iter][key] = filename
 
         return dataset_dict
 
@@ -70,7 +124,8 @@ def train_test_split_and_sort_by_pid():
 
     # save dataset_dict's
     with open(configs_data_aug.data_splitted_filename, "wb") as wf:
-        pickle.dump({"train": train_dataset_dict, "test": test_dataset_dict}, wf)
+        pickle.dump({"train": train_dataset_dict, "test": test_dataset_dict,
+                     "train_pids": train_pids, "test_pids": test_pids}, wf)
 
     return train_dataset_dict, test_dataset_dict
 

@@ -20,7 +20,7 @@ volume_filenames = {
     "mask": "reg_mask_cropped_corrected.nii.gz"
 }
 volume_info_keys = ("volume", "bbox", "bbox_coord", "mask")
-# {"train": dict, "test": dict}
+# {"train": dict, "test": dict, "train_pids": list, "test_pids": list}
 data_splitted_filename = r"D:\testings\Python\TestingPython\SemesterProject2\dataset\dataset_by_pid.pkl"
 
 train_test_split = 0.9
