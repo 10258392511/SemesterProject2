@@ -11,6 +11,7 @@ class SamplingPolicy(BasePolicy):
         """
         super(SamplingPolicy, self).__init__()
         self.params = params
+        self.size_last_signs = [0, 0, 0]
 
     def get_action(self, obs) -> np.ndarray:
         """
@@ -30,12 +31,18 @@ class SamplingPolicy(BasePolicy):
 
         for dim in range(next_size.shape[0]):
             sample = np.random.rand()
-            if sample < 1 / 3:
-                sign = -1
-            elif sample > 2 / 3:
+            if self.size_last_signs[dim] == -1:
                 sign = 1
-            else:
+            elif self.size_last_signs[dim] == 1:
                 sign = 0
+            else:
+                if sample < 1 / 3:
+                    sign = -1
+                elif sample > 2 / 3:
+                    sign = 1
+                else:
+                    sign = 0
             next_size[dim] *= (1 + sign * self.params["size_scale"])
+            self.size_last_signs[dim] = sign
 
         return next_center.astype(np.int), next_size.astype(np.int)

@@ -3,7 +3,7 @@ To install the project as an editable package, please use at the root directory:
 ```bash
 pip install -e .
 ```
-Preliminary experiments:
+### Preliminary experiments:
 - **DDQN**
   - CartPole-v0 (Before & After Training):
     
@@ -14,3 +14,8 @@ Preliminary experiments:
     
     <img src="results/dqn_lunar_lander/dqn_lunar_lander_episode_1.gif" style="width: 42%" alt="LunarLander Before Training">
     <img src="results/dqn_lunar_lander/dqn_lunar_lander_episode_500.gif" style="width: 42%" alt="LunarLander After Training">
+
+### Random Sampling Policy:
+
+<img src="results/volumetric_sampling_policy/no_title.gif" style="width: 42%" alt="without title">
+<img src="results/volumetric_sampling_policy/title.gif" style="width: 42%" alt="with title">

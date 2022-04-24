@@ -30,10 +30,11 @@ class Volumetric(Env):
         self.vol = None
         self.seg = None
         self.bbox_coord = None
+        self.closest_lesion_seg = None
         self.time_step = 0
         self.dice_score_small, self.dice_score_large = 0, 0
-        # self.cv_window = None
         self.cv_window_name = "VolumetricEnv"
+        self.sample_index = None
 
     def close(self):
         # close .cv_window
@@ -52,11 +53,17 @@ class Volumetric(Env):
     ) -> Union:
         seed = self.params["seed"] if seed is None else seed
         super().reset(seed=seed)
-        # self.cv_window = cv.namedWindow(self.cv_window_name)
 
         # sample one volume from .dataset
+        np.random.seed(seed)
         index = np.random.randint(len(self.dataset))
         self.vol, self.seg, self.bbox_coord = self.dataset[index]
+        self.center = None
+        self.size = np.array(self.params["init_size"])
+        self.closest_lesion_seg = None
+        self.time_step = 0
+        self.dice_score_small, self.dice_score_large = 0, 0
+        self.sample_index = index
 
         vol_center = self.get_vol_center_()
         # sample .center from N(.center, .size ** 2)
@@ -99,6 +106,13 @@ class Volumetric(Env):
                 cv.rectangle(img_slice, bbox_start[:2], bbox_end[:2], color=(255, 0, 0), thickness=2,
                              lineType=cv.LINE_AA)
 
+        # purple: closest legion mask
+        if self.closest_lesion_seg is not None:
+            mask = (self.closest_lesion_seg[z, ...] > 0)
+            img_slice[mask, 0] = 255
+            img_slice[mask, 2] = 255
+            img_slice[mask, 1] = 0
+
         if mode == "rgb_array":
             return img_slice
 
@@ -115,8 +129,7 @@ class Volumetric(Env):
         act_center, act_size = action
         done = False
         reward = self.params["fuel_cost"]
-        if not (0 <= act_center[0] < self.vol.shape[2] and 0 <= act_center[1] < self.vol.shape[1] \
-                and 0 <= act_center[2] <= self.vol.shape[0]):
+        if not self.is_in_vol_(act_center, act_size):
             done  = True
         if self.time_step > self.params["max_ep_len"]:
             done = True
@@ -124,12 +137,14 @@ class Volumetric(Env):
         self.center, self.size = act_center, act_size
         patch_small, patch_large = self.get_patch_by_center_size(self.center, self.size), \
                                    self.get_patch_by_center_size(self.center, self.size * 2)
-        dice_score_small = self.compute_dice_score_(self.center, self.size)
-        dice_score_large = self.compute_dice_score_(self.center, self.size * 2)
 
         if done:
-            reward += (dice_score_small + dice_score_large) * self.params["dice_reward_weighting"]
+            reward += (self.dice_score_small + self.dice_score_large) * self.params["dice_reward_weighting"]
             return (patch_small, patch_large, self.center, self.size), reward, done, {}
+
+        self.compute_closest_legion_seg_()  # set .closest_legion_seg
+        dice_score_small = self.compute_dice_score_(self.center, self.size)
+        dice_score_large = self.compute_dice_score_(self.center, self.size * 2)
 
         dice_score_small_sign = 1 if dice_score_small > self.dice_score_small else -1
         self.dice_score_small = dice_score_small
@@ -139,9 +154,16 @@ class Volumetric(Env):
 
         return (patch_small, patch_large, self.center, self.size), reward, done, {}
 
+    def is_in_vol_(self, center, size):
+        start, end = center_size2start_end(center, size)
+        if np.all(start > 0) and np.all(end < np.array(self.vol.shape[::-1])):
+            return True
+        return False
+
     def compute_dice_score_(self, patch_center, patch_size):
         patch_mask = self.convert_bbox_coord_to_mask_(np.concatenate([patch_center, patch_size], axis=-1))
-        seg_selected = self.compute_closest_legion_seg_()
+        assert self.closest_lesion_seg is not None
+        seg_selected = self.closest_lesion_seg
         intersection = (patch_mask * seg_selected).sum()  # (D, H, W) * (D, H, W) -> sum(.) -> (1,)
         dice_score = 2 * (intersection) / (patch_mask.sum() + seg_selected.sum())
 
@@ -153,7 +175,7 @@ class Volumetric(Env):
         """
         closest_dist, closest_bbox = float("inf"), None
         for bbox_coord in self.bbox_coord:
-            bbox_coord_half_len = len(bbox_coord)
+            bbox_coord_half_len = len(bbox_coord) // 2
             start, size = bbox_coord[:bbox_coord_half_len], bbox_coord[bbox_coord_half_len:]
             center, _ = start_size2center_size(start, size)
             dist = np.linalg.norm(self.center - center)
@@ -163,14 +185,13 @@ class Volumetric(Env):
 
         mask = self.convert_bbox_coord_to_mask_(closest_bbox)
         seg = self.seg * mask
-
-        return seg
+        self.closest_lesion_seg = seg
 
     def convert_bbox_coord_to_mask_(self, bbox_coord):
         """
         bbox_coord: (x_min, y_min, z_min, x_size, y_size, z_size), np.ndarray
         """
-        bbox_coord_half_len = len(bbox_coord)
+        bbox_coord_half_len = len(bbox_coord) // 2
         start, size = bbox_coord[:bbox_coord_half_len], bbox_coord[bbox_coord_half_len:]
         end = (start + size).astype(np.int)
         mask = np.zeros_like(self.seg)

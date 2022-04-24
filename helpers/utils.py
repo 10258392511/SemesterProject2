@@ -1,8 +1,11 @@
 import numpy as np
+import matplotlib.pyplot as plt
 import gym
 import moviepy.editor as editor
 import os
 
+from typing import List
+from moviepy.video.io.bindings import mplfig_to_npimage
 
 def Path(obs, image_obs, acts, rewards, next_obs, terminals):
     """
@@ -91,6 +94,21 @@ def record_gif(frames, save_filename, **kwargs):
     clip.write_gif(save_filename, fps)
 
 
+def convert_mpl_to_np(imgs: List[np.ndarray], titles: List[str], **kwargs):
+    imgs_out = []
+    figsize = kwargs.get("figsize", (7.2, 4.8))
+    fig, axis = plt.subplots(figsize=figsize)
+    for img, title in zip(imgs, titles):
+        axis.imshow(img)
+        axis.set_title(title)
+        img_out = mplfig_to_npimage(fig)
+        imgs_out.append(img_out)
+
+    plt.close()
+
+    return imgs_out
+
+
 def create_log_dir_name(timestamp: str, param_dict: dict):
     """
      param_dict should be correctly set up out of the scope. E.g., {"lr": f"{val:.3f}"}
@@ -134,6 +152,6 @@ def start_size2center_size(start: np.ndarray, size: np.ndarray):
     """
     x, y, z coord or d, h, w coord
     """
-    center = (start + size / 2).astype(np.uint8)
+    center = (start + size / 2).astype(np.int)
 
     return center, size
