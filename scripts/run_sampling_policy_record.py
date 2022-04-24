@@ -1,7 +1,8 @@
 import sys
 
 
-path = "D:\\testings\\Python\\TestingPython"
+# path = "D:\\testings\\Python\\TestingPython"
+path = "/home/zhexwu/Researches/biomedical_imaging"
 if path not in sys.path:
     sys.path.append(path)
 

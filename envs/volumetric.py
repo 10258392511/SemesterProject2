@@ -52,7 +52,7 @@ class Volumetric(Env):
         options: Optional[dict] = None,
     ) -> Union:
         seed = self.params["seed"] if seed is None else seed
-        super().reset(seed=seed)
+        # super().reset(seed=seed)
 
         # sample one volume from .dataset
         np.random.seed(seed)
