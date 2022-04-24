@@ -17,5 +17,14 @@ pip install -e .
 
 ### Random Sampling Policy:
 
-<img src="results/volumetric_sampling_policy/no_title.gif" style="width: 42%" alt="without title">
-<img src="results/volumetric_sampling_policy/title.gif" style="width: 42%" alt="with title">
+<!-- <img src="results/volumetric_sampling_policy/no_title.gif" style="width: 10cm, height=10cm" alt="without title">
+<img src="results/volumetric_sampling_policy/title.gif" style="width: 10cm, height=10cm" alt="with title">
+ -->
+<!--  ![without title](results/volumetric_sampling_policy/no_title.gif) ![with title](results/volumetric_sampling_policy/title.gif) -->
+
+<table>
+  <tr>
+    <td><img src="results/volumetric_sampling_policy/no_title.gif" width=330 height=480></td>
+    <td><img src="results/volumetric_sampling_policy/title.gif" width=750 height=480></td>
+  </tr>
+ </table>
