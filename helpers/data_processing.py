@@ -254,7 +254,6 @@ def make_bbox_vol_(bbox_inds: np.ndarray, vol_shape):
     return bbox_vol
 
 
-
 if __name__ == '__main__':
     train_dataset_dict, test_dataset_dict = train_test_split_and_sort_by_pid()
     pprint(train_dataset_dict)

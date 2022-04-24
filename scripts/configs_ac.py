@@ -81,7 +81,8 @@ volumetric_env_params = base_env_params.copy()
 volumetric_env_params.update({
     "max_ep_len": 400,
     "init_size": (16, 16, 16),
-    "dice_reward_weighting": 10  # per DQN paper on DCE-MRI, the final bonus
+    "dice_reward_weighting": 10,  # per DQN paper on DCE-MRI, the final bonus
+    "fuel_cost": -0.03
 })
 volumetric_sampling_policy_args = {
     "max_ep_len": volumetric_env_params["max_ep_len"],
