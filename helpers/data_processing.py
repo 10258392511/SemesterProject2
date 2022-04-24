@@ -10,6 +10,7 @@ import SemesterProject2.scripts.configs_data_aug as configs_data_aug
 from torch.utils.data import Dataset
 from monai.transforms import Rand3DElastic, RandGaussianSmooth, RandGaussianNoise, RandAdjustContrast, Compose
 from pprint import pprint
+from SemesterProject2.helpers.utils import start_size2start_end
 
 
 class VolumetricDataset(Dataset):
@@ -34,24 +35,28 @@ class VolumetricDataset(Dataset):
         pid = self.pids[index]
         patient_dict = self.data_dict[pid]
         vol = np.array(self.file.get(patient_dict["volume"]))
-        bbox = np.array(self.file.get(patient_dict["bbox"]))
+        # bbox = np.array(self.file.get(patient_dict["bbox"]))
         seg = np.array(self.file.get(patient_dict["mask"]))
         # (x_min, y_min, z_min, width, height, depth)
-        bbox_coord = np.array(self.file.get(patient_dict["bbox_coord"]))
+        # bbox_coord = np.array(self.file.get(patient_dict["bbox_coord"]))
 
         vol = normalize_volume(vol)
-        if self.mode == "test":
-            return vol, seg, bbox, bbox_coord
 
-        vol_aug, seg_aug = close_crop(vol, seg)
-        vol_aug, seg_aug = spatial_transform(vol_aug, seg_aug)
-        vol_aug, seg_aug = intensity_transform(vol_aug, seg_aug)
+        if self.mode == "train":
+            vol_aug, seg_aug = close_crop(vol, seg)
+            vol_aug, seg_aug = spatial_transform(vol_aug, seg_aug)
+            vol_aug, seg_aug = intensity_transform(vol_aug, seg_aug)
 
-        return vol_aug, seg_aug
+        else:
+            vol_aug, seg_aug = vol, seg
+
+        vol_aug, seg_aug, bbox_coord_aug = transform_bbox(vol_aug, seg_aug)
+
+        return vol_aug, seg_aug, bbox_coord_aug
 
 
 def visualize(vols, z, if_notebook=True, **kwargs):
-    vol, seg = vols[:2]
+    vol = vols[0]
     assert 0 <= z < vol.shape[0], "invalid slice number"
     for vol_iter in vols:
         assert vol_iter.shape == vol.shape, "shape mismatch"
@@ -59,6 +64,8 @@ def visualize(vols, z, if_notebook=True, **kwargs):
     figsize = kwargs.get("figsize", (3.6 * len(vols), 4.8))
     fraction = kwargs.get("fraction", 0.2)
     fig, axes = plt.subplots(1, len(vols), figsize=figsize)
+    if len(vols) == 1:
+        axes = [axes]
     imgs = [vol_iter[z, ...] for vol_iter in vols]
     for img, axis in zip(imgs, axes):
         handle = axis.imshow(img, cmap="gray")
@@ -130,13 +137,18 @@ def train_test_split_and_sort_by_pid():
     return train_dataset_dict, test_dataset_dict
 
 
-def save_for_visualization(vol: np.ndarray, seg: np.ndarray, save_dir):
+def save_for_visualization(vol: np.ndarray, seg: np.ndarray, save_dir, bbox: np.array = None):
     vol_sitk = sitk.GetImageFromArray(vol)
     seg_sitk = sitk.GetImageFromArray(seg)
     vol_path = os.path.join(save_dir, "vol.nii")
     seg_path = os.path.join(save_dir, "seg.nii")
     sitk.WriteImage(vol_sitk, vol_path)
     sitk.WriteImage(seg_sitk, seg_path)
+
+    if bbox is not None:
+        bbox_sitk = sitk.GetImageFromArray(bbox)
+        bbox_path = os.path.join(save_dir, "bbox.nii")
+        sitk.WriteImage(bbox_sitk, bbox_path)
 
 
 def identity_transform(vol: np.ndarray, seg: np.ndarray, if_save=False):
@@ -211,6 +223,36 @@ def close_crop(vol: np.ndarray, seg: np.ndarray, if_save=False):
         save_for_visualization(vol_out, seg_out, configs_data_aug.temp_save_dir)
 
     return vol_out, seg_out
+
+
+def transform_bbox(vol: np.ndarray, seg: np.ndarray, if_save=False):
+    """
+    "vol" is not used which passed in to be consistent with signature.
+    """
+    label_shape_filter = sitk.LabelShapeStatisticsImageFilter()
+    seg_sitk = sitk.GetImageFromArray(seg)
+    seg_sitk = sitk.Cast(seg_sitk, sitk.sitkUInt8)
+    connected_comp_img = sitk.ConnectedComponent(seg_sitk)
+    label_shape_filter.Execute(connected_comp_img)
+    # print(label_shape_filter.GetLabels())
+    bboxes = np.array([label_shape_filter.GetBoundingBox(label) for label in label_shape_filter.GetLabels()])
+
+    if if_save:
+        bbox_vol = make_bbox_vol_(bboxes, vol.shape)
+        save_for_visualization(vol, seg, configs_data_aug.temp_save_dir, bbox_vol)
+
+    return vol, seg, bboxes
+
+
+def make_bbox_vol_(bbox_inds: np.ndarray, vol_shape):
+    bbox_vol = np.zeros(vol_shape, dtype=np.float32)
+    for label, bbox_ind in enumerate(bbox_inds):
+        bbox_ind_half_len = len(bbox_ind) // 2
+        start, end = start_size2start_end(bbox_ind[:bbox_ind_half_len], bbox_ind[bbox_ind_half_len:])
+        bbox_vol[start[2]:end[2], start[1]:end[1], start[0]:end[0]] = label + 1
+
+    return bbox_vol
+
 
 
 if __name__ == '__main__':

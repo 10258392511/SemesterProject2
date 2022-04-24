@@ -110,9 +110,22 @@ def create_param_dir(dirname, pt_filename):
 
 
 def center_size2start_end(center: np.ndarray, size: np.ndarray):
+    """
+    x, y, z coord
+    """
     assert center.shape == size.shape, "shape mismatch"
     start = (center - size / 2).astype(np.int)
     end = center + size
+
+    return start, end
+
+
+def start_size2start_end(start: np.ndarray, size: np.ndarray):
+    """
+    x, y, z coord
+    """
+    assert start.shape == size.shape, "shape mismatch"
+    end = (start + size).astype(np.int)
 
     return start, end
 
