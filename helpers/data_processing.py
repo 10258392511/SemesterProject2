@@ -41,14 +41,11 @@ class VolumetricDataset(Dataset):
         # bbox_coord = np.array(self.file.get(patient_dict["bbox_coord"]))
 
         vol = normalize_volume(vol)
+        vol_aug, seg_aug = close_crop(vol, seg)
 
         if self.mode == "train":
-            vol_aug, seg_aug = close_crop(vol, seg)
             vol_aug, seg_aug = spatial_transform(vol_aug, seg_aug)
             vol_aug, seg_aug = intensity_transform(vol_aug, seg_aug)
-
-        else:
-            vol_aug, seg_aug = vol, seg
 
         vol_aug, seg_aug, bbox_coord_aug = transform_bbox(vol_aug, seg_aug)
 
