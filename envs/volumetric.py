@@ -152,7 +152,8 @@ class Volumetric(Env):
         self.dice_score_large = dice_score_large
         reward += dice_score_small_sign + dice_score_large_sign
 
-        return (patch_small, patch_large, self.center, self.size), reward, done, {}
+        return (patch_small, patch_large, self.center, self.size), reward, done, {"dice_score_small": dice_score_small,
+                                                                                  "dice_score_large": dice_score_large}
 
     def is_in_vol_(self, center, size):
         start, end = center_size2start_end(center, size)
