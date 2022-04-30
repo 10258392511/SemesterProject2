@@ -129,18 +129,20 @@ class Volumetric(Env):
         act_center, act_size = action
         done = False
         reward = self.params["fuel_cost"]
-        if not self.is_in_vol_(act_center, act_size):
+        if not self.is_in_vol_(act_center, act_size * 2):
             done  = True
         if self.time_step > self.params["max_ep_len"]:
             done = True
-
-        self.center, self.size = act_center, act_size
+        if not done:
+            self.center, self.size = act_center, act_size
         patch_small, patch_large = self.get_patch_by_center_size(self.center, self.size), \
                                    self.get_patch_by_center_size(self.center, self.size * 2)
+        assert np.all(np.array(patch_small.shape) > 0) and np.all(np.array(patch_large.shape) > 0), "shape <= 0"
 
         if done:
             reward += (self.dice_score_small + self.dice_score_large) * self.params["dice_reward_weighting"]
-            return (patch_small, patch_large, self.center, self.size), reward, done, {}
+            return (patch_small, patch_large, self.center, self.size), reward, done, \
+                   {"dice_score_small": self.dice_score_small, "dice_score_large": self.dice_score_large}
 
         self.compute_closest_legion_seg_()  # set .closest_legion_seg
         dice_score_small = self.compute_dice_score_(self.center, self.size)
