@@ -24,9 +24,16 @@ class Encoder(nn.Module):
                                                          norm=nn.LayerNorm(self.params["d_model"]))
 
     def forward(self, X_small: torch.Tensor, X_large: torch.Tensor, X_pos: torch.Tensor):
+        X = self.embed(X_small, X_large, X_pos)
+        X = self.transformer_encoder(X)  # (T, B, d_model)
+
+        return X
+
+    def embed(self,  X_small: torch.Tensor, X_large: torch.Tensor, X_pos: torch.Tensor):
         # X_small: (T, B, 1, P, P, P), X_large: (T, B, 1, 2P, 2P, 2P), X_pos: (T, B, 3)
         T, B, C_in, P = X_small.shape[:4]
         assert P == self.params["patch_size"] and C_in == self.params["in_channels"]
+        X_pos = X_pos.to(X_small.dtype)
         X_pos = self.pos_emb(X_pos)  # (T, B, d_model)
         X_large = X_large.reshape((T, B, C_in, 2, P, 2, P, 2, P))
         X_large = X_large.permute((0, 1, 2, 3, 5, 7, 4, 6, 8))  # (T, B, C_in, 2, 2, 2, P, P, P)
@@ -36,7 +43,6 @@ class Encoder(nn.Module):
         X = self.patch_embed(X).squeeze()  # (T * B, d_model, 1, 1, 1) -> (T * B, d_model)
         X = X.reshape((T, B, -1))  # (T, B, d_model)
         X = X + X_pos  # (T, B, d_model)
-        X = self.transformer_encoder(X)  # (T, B, d_model)
 
         return X
 

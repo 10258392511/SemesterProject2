@@ -34,10 +34,10 @@ actor_head_params.update({
     "out_features": 8  # mu: 3, sigma: 3, cls: 2 (for convenience to convert to Categorical: (pos, neg))
 })
 
-# strictly this should go to configs_ac.py as volumetric_env_params, but for convenience of a param-sharing agent
-vit_agent_params = {
-    "num_target_steps": 10,
-    "num_grad_steps_per_target_update": 10,
-    "lam_cls": 1,
-    "replay_buffer_size": 50000
-}
+# # strictly this should go to configs_ac.py as volumetric_env_params, but for convenience of a param-sharing agent
+# vit_agent_params = {
+#     "num_target_steps": 10,
+#     "num_grad_steps_per_target_update": 10,
+#     "lam_cls": 1,
+#     "replay_buffer_size": 50000
+# }
