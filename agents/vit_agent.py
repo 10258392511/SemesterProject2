@@ -2,6 +2,7 @@ import torch
 import SemesterProject2.helpers.pytorch_utils as ptu
 import SemesterProject2.scripts.configs_network as configs_network
 
+from torch.distributions import Normal
 from SemesterProject2.agents.base_agent import BaseAgent
 from SemesterProject2.helpers.modules.vit_agent_modules import Encoder, MLPHead
 from SemesterProject2.helpers.replay_buffer_vit import ReplayBuffer
@@ -97,12 +98,44 @@ class ViTAgent(BaseAgent):
         # both (T, B)
         return v_vals_current, v_vals_next
 
-    def compute_likelihood_and_penalty_(self, paths):
+    def compute_likelihood_and_penalty_(self, embs_encoded, acts_in, has_seen_lesion, mode="all"):
         """
-        Returns:
-            bbox_log_lh: (T,), cls_log_lh: (T,), cls_penalty: (1,)
+        Parameters
+        ----------
+        All: Tensor, already sent to device
+        embs_encoded: (T, B, N_emb)
+        acts: ((T, B, 3), (T, B, 3))
+        has_seen_lesion: (T, B)
+
+        Returns
+        -------
+        mode == "all":
+            bbox_lh: (T, B)
+            clf_reward: (T, B), float32
+            clf_penalty: (1,)
+        mode == "clf_only":
+            clf_penalty: (1,)
         """
-        pass
+        assert mode in ("all", "clf_only"), "invalid mode"
+
+        acts = self.actor_head(embs_encoded)  # (T, B, 8)
+        mu, log_sigma, cls = acts[..., :3], acts[..., 3:6], acts[..., 6:]  # (T, B, 3), (T, B, 3), (T, B, 2)
+        cls = torch.softmax(cls, dim=-1)  # (T, B, 2)
+        # L2 distance for unbanlanced data; each: [has_seen_lesion, has_not_seen_legion]
+        # (T, B) + (T, B) -.mean()-> (1,)
+        clf_penalty = ((cls[..., 0] - has_seen_lesion) ** 2 + ((cls[..., 1] - (1 - has_seen_lesion))) ** 2).mean()
+
+        clf_pred = cls[..., 0] > 0.5  # (T, B)
+        with torch.no_grad():
+            clf_reward = (clf_pred == has_seen_lesion).to(embs_encoded.dtype)  # (T, B)
+
+        if mode == "clf_only":
+            return clf_reward, clf_penalty
+
+        normal_distr = Normal(mu, log_sigma.exp())  # (T, B, 3)
+        bbox_lh = normal_distr.log_prob(acts_in[0]).sum(dim=-1)  # (T, B, 3) -> (T, B)
+
+        return bbox_lh, clf_reward, clf_penalty
 
     def compute_novelty_seeking_reward_(self, embs_encoded, next_embs):
         """

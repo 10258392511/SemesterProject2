@@ -137,7 +137,7 @@ class ReplayBuffer(object):
     def __init__(self, params):
         """
         params: configs_ac.volumetric_env_params
-            replay_buffer_size, dice_small_th
+            replay_buffer_size, dice_small_th, num_steps_to_memorize
         """
         self.params = params
         self.paths = []  # with info being {"has_seen_lesion": (T,)}
@@ -145,7 +145,7 @@ class ReplayBuffer(object):
 
     def add_rollouts(self, paths: dict):
         for path in paths:
-            path["infos"] = {"has_seen_legion": self.has_seen_lesion(path["infos"])}
+            path["infos"] = {"has_seen_lesion": self.has_seen_lesion(path["infos"])}
             self.paths.append(path)
             self.num_transitions += path["rewards"].shape[0]
 
@@ -185,15 +185,16 @@ class ReplayBuffer(object):
             # path_len = max_path_len
             num_rollouts = 0
             obs, next_obs = [[], [], [], []], [[], [], [], []]
-            has_seen_legion = []
+            has_seen_lesion = []
             for i in range(len(self.paths) - 1, -1, -1):
                 path = self.paths[i]
                 if path["rewards"].shape[0] < path_len:
                     continue
                 for i_loc in range(len(path["observations"])):
+                    # select first path_len timesteps from each rollout
                     obs[i_loc].append(path["observations"][i_loc][:path_len, ...])
                     next_obs[i_loc].append(path["next_obs"][i_loc][:path_len, ...])
-                has_seen_legion.append(path["infos"]["has_seen_legion"][:path_len, ...])
+                has_seen_lesion.append(path["infos"]["has_seen_lesion"][:path_len, ...])
                 num_rollouts += 1
                 if num_rollouts == batch_size:
                     break
@@ -204,9 +205,9 @@ class ReplayBuffer(object):
 
         obs = [np.stack(item, axis=1) for item in obs]
         next_obs = [np.stack(item, axis=1) for item in next_obs]
-        has_seen_legion = np.array(has_seen_legion)
+        has_seen_lesion = np.array(has_seen_lesion)
 
-        return obs, next_obs, has_seen_legion
+        return obs, next_obs, has_seen_lesion
 
     def has_seen_lesion(self, infos: dict):
         """
@@ -218,6 +219,12 @@ class ReplayBuffer(object):
         labels: (T,)
         """
         if_see_lesion = infos["dice_score_small"] > self.params["dice_score_small_th"]
-        has_seen_lesion = (np.cumsum(if_see_lesion.astype(int)) > 0)
+        # has_seen_lesion = (np.cumsum(if_see_lesion.astype(int)) > 0)
+        has_seen_lesion =  np.empty(if_see_lesion.shape, dtype=bool)
+        for i in range(has_seen_lesion.shape[-1]):
+            end = i + 1
+            start = max(end - 1 - self.params["num_steps_to_memorize"], 0)
+            window = if_see_lesion[start:end]
+            has_seen_lesion[i] = np.any(window)
 
         return has_seen_lesion

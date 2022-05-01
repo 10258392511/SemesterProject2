@@ -85,13 +85,13 @@ volumetric_env_params.update({
     "fuel_cost": -0.03,
     "dice_score_small_th": 1e-6,
     "gamma": 0.999,
-    "num_target_updates": 10,
-    "num_grad_steps_per_target_update": 10,
-    "num_critic_updates_per_agent_update": 1,
-    "num_actor_updates_per_agent_update": 1,
+    "num_target_updates": 2,  # 10
+    "num_grad_steps_per_target_update": 2,  # 10
+    "num_critic_updates_per_agent_update": 1,  # fixed to be 1
+    "num_actor_updates_per_agent_update": 1,  # fixed to be 1
     "lam_cls": 1,
     "replay_buffer_size": 50000,
-    "l2_tao": 1,
+    "l2_tao": 10,
     "num_steps_to_memorize": 20,
     "max_num_videos": 1,
     "max_video_len": 300
