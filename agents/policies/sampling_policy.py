@@ -12,6 +12,7 @@ class SamplingPolicy(BasePolicy):
         super(SamplingPolicy, self).__init__()
         self.params = params
         self.size_last_signs = [0, 0, 0]
+        self.terminal = False
 
     def get_action(self, obs) -> np.ndarray:
         """

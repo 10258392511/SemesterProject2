@@ -14,6 +14,8 @@ class ViTAgent(BaseAgent):
         params:
         configs_ac.volumetric_env_params:
             num_target_steps, num_grad_steps_per_target_update, lam_cls, replay_buffer_size, dice_score_small_th, l2_tao
+        bash:
+            num_pre_train_updates, pre_train_batch_size, eval_interval
         As keys:
             encoder_params, *_head_params
         """
@@ -25,10 +27,23 @@ class ViTAgent(BaseAgent):
         self.actor_head = MLPHead(self.params["actor_head_params"]).to(ptu.device)
         self.replay_buffer = ReplayBuffer(self.params)
 
+        # TODO: 4 optimizers
+
     def train(self, paths) -> dict:
+        """
+        TODO: encoding -> compute total rewards -> (update critic -> actor -> patch_pred) -> merge info_dicts
+        All heads are updated only after a complete rollout, so total rewards can (should) be (pre-)computed only once.
+        """
         pass
 
-    def pre_train(self, paths) -> dict:
+    def pre_train(self) -> dict:
+        pass
+
+    def pre_train_(self):
+        pass
+
+    @torch.no_grad()
+    def pre_eval_(self):
         pass
 
     def add_to_replay_buffer(self, paths):
@@ -42,10 +57,15 @@ class ViTAgent(BaseAgent):
 
         return paths
 
-    def update_critic(self, paths) -> dict:
+    def update_critic(self, embs_encoded, next_embs_encoded, next_embs, has_seen_lesion,
+                      total_rewards, terminals) -> dict:
         pass
 
-    def update_actor(self, paths) -> dict:
+    def update_actor(self, embs_encoded, next_embs_encoded, actions, has_seen_lesion,
+                     total_rewards, terminals) -> dict:
+        pass
+
+    def update_patch_pred(self, novelty_loss):
         pass
 
     def encode_seq_(self, obs):

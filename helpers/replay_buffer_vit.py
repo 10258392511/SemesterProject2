@@ -96,6 +96,7 @@ def sample_trajectory(env: gym.Env, policy, max_path_length, render=False):
     obs, image_obs, acts, next_obs, rews, terminals, infos = [], [], [], [], [], [], []
 
     ob = env.reset()
+    policy.terminal = False
     for _ in range(max_path_length):
         obs.append(ob)
         act = policy.get_action(ob)
@@ -110,6 +111,7 @@ def sample_trajectory(env: gym.Env, policy, max_path_length, render=False):
         infos.append(info)
 
         if done:
+            policy.terminal = True
             break
 
     terminals[-1] = True
