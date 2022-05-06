@@ -65,11 +65,15 @@ class Volumetric(Env):
         self.dice_score_small, self.dice_score_large = 0, 0
         self.sample_index = index
 
-        vol_center = self.get_vol_center_()
-        # sample .center from N(.center, .size ** 2)
-        self.center = (vol_center + np.random.randn(*self.size.shape) * self.size).astype(np.int)
-        patch_small = self.get_patch_by_center_size(self.center, self.size)
-        patch_large = self.get_patch_by_center_size(self.center, self.size * 2)
+        while True:
+            vol_center = self.get_vol_center_()
+            # sample .center from N(.center, .size ** 2)
+            self.center = (vol_center + np.random.randn(*self.size.shape) * self.size).astype(np.int)
+            patch_small = self.get_patch_by_center_size(self.center, self.size)
+            patch_large = self.get_patch_by_center_size(self.center, self.size * 2)
+
+            if self.is_in_vol_(self.center, 2 * self.size):
+                break
 
         return patch_small, patch_large, self.center, self.size
 

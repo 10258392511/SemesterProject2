@@ -14,10 +14,9 @@ class ViTAgent(BaseAgent):
         params:
         configs_ac.volumetric_env_params:
             num_target_steps, num_grad_steps_per_target_update, lam_cls, replay_buffer_size, dice_score_small_th, l2_tao
-        bash:
-            num_pre_train_updates, pre_train_batch_size, eval_interval
-        As keys:
-            encoder_params, *_head_params
+        As keys: configs_networks:
+            encoder_params, *_head_params,
+            encoder_opt_args, *_head_opt_args
         """
         super(ViTAgent, self).__init__()
         self.params = params
@@ -26,24 +25,20 @@ class ViTAgent(BaseAgent):
         self.critic_head = MLPHead(self.params["critic_head_params"]).to(ptu.device)
         self.actor_head = MLPHead(self.params["actor_head_params"]).to(ptu.device)
         self.replay_buffer = ReplayBuffer(self.params)
-
-        # TODO: 4 optimizers
+        self.encoder_opt = self.params["encoder_opt_args"]["class"](self.encoder.parameters(),
+                                                                    **self.params["encoder_opt_args"]["args"])
+        self.patch_pred_head_opt = self.params["patch_pred_head_opt_args"]["class"](self.patch_pred_head.parameters(),
+                                                                    **self.params["patch_pred_head_opt_args"]["args"])
+        self.critic_head_opt = self.params["critic_head_opt_args"]["class"](self.critic_head.parameters(),
+                                                                    **self.params["critic_head_opt_args"]["args"])
+        self.actor_head_opt = self.params["actor_head_opt_args"]["class"](self.actor_head.parameters(),
+                                                                    **self.params["actor_head_opt_args"]["args"])
 
     def train(self, paths) -> dict:
         """
         TODO: encoding -> compute total rewards -> (update critic -> actor -> patch_pred) -> merge info_dicts
         All heads are updated only after a complete rollout, so total rewards can (should) be (pre-)computed only once.
         """
-        pass
-
-    def pre_train(self) -> dict:
-        pass
-
-    def pre_train_(self):
-        pass
-
-    @torch.no_grad()
-    def pre_eval_(self):
         pass
 
     def add_to_replay_buffer(self, paths):
@@ -70,9 +65,11 @@ class ViTAgent(BaseAgent):
 
     def encode_seq_(self, obs):
         """
-        obs: ((T, B, 1, P, P, P), (T, B, 1, 2P, 2P, 2P), (T, B, 3), (T, B, 3))
+        obs: ((T, B, 1, P, P, P), (T, B, 1, 2P, 2P, 2P), (T, B, 3), (T, B, 3)), already sent to device
         """
         X_small, X_large, X_pos, _ = obs
+        X_small = 2 * X_small - 1
+        X_large = 2 * X_large - 1
         T, B = X_small.shape[:2]
         N_emb = self.params["encoder_params"]["d_model"]
         embs = torch.empty((T, B, N_emb), dtype=X_small.dtype, device=X_small.device)

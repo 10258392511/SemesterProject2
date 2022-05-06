@@ -155,3 +155,10 @@ def start_size2center_size(start: np.ndarray, size: np.ndarray):
     center = (start + size / 2).astype(np.int)
 
     return center, size
+
+
+def print_list_arrays(obs):
+    if isinstance(obs, list):
+        print([item.shape for item in obs])
+    else:
+        print(obs.shape)

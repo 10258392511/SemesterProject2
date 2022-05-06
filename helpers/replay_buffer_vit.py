@@ -150,6 +150,7 @@ class ReplayBuffer(object):
             path["infos"] = {"has_seen_lesion": self.has_seen_lesion(path["infos"])}
             self.paths.append(path)
             self.num_transitions += path["rewards"].shape[0]
+        self.paths = self.paths[-self.params["replay_buffer_size"]:]
 
     def can_sample(self, batch_size):
         return self.num_transitions >= batch_size
@@ -170,7 +171,7 @@ class ReplayBuffer(object):
 
         return paths_out
 
-    def sample_trajetories_eq_len(self, batch_size, min_path_len=1, max_path_len=50):
+    def sample_trajetories_eq_len(self, batch_size, min_path_len=1, max_path_len=30):
         """
         For pre-training: can use batch-training. Returns maximum number of batches (rollouts) in case no sufficient
         rollouts. Considers new rollouts first. Old rollouts are used repeatedly but with varied path length.
@@ -207,7 +208,7 @@ class ReplayBuffer(object):
 
         obs = [np.stack(item, axis=1) for item in obs]
         next_obs = [np.stack(item, axis=1) for item in next_obs]
-        has_seen_lesion = np.array(has_seen_lesion)
+        has_seen_lesion = np.stack(has_seen_lesion, axis=1)
 
         return obs, next_obs, has_seen_lesion
 
