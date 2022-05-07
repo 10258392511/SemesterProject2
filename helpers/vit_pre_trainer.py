@@ -41,11 +41,11 @@ class ViTPreTrainer(object):
             train_log_dict = self.pre_train_()
             eval_log_dict = self.pre_eval_()
 
-            if num_iter % self.params["eval_interval"] == 0:
-                if best_eval_loss > eval_log_dict[metric]:
-                    best_eval_loss = eval_log_dict[metric]
-                    self.save_models_()
+            if best_eval_loss > eval_log_dict[metric]:
+                best_eval_loss = eval_log_dict[metric]
+                self.save_models_()
 
+            if num_iter % self.params["eval_interval"] == 0:
                 # logging
                 print(f"iter {num_iter} / {self.params['num_pre_train_updates']}")
                 pprint(train_log_dict)
@@ -56,6 +56,9 @@ class ViTPreTrainer(object):
         """
         tags: train_clf_loss, train_clf_acc, train_novelty_loss, train_loss
         """
+        self.agent.encoder.train()
+        self.agent.patch_pred_head.train()
+        self.agent.actor_head.train()
         if len(self.agent.replay_buffer.paths) < self.params["pre_train_batch_size"]:
             num_paths_to_sample = self.params["pre_train_batch_size"]
         else:
@@ -111,6 +114,9 @@ class ViTPreTrainer(object):
         tags: eval_clf_loss, eval_clf_acc, eval_novelty_loss, eval_loss
         """
         # obs, next_obs: ((T, B, 1, P, P, P), (T, B, 1, 2P, 2P, 2P), (T, B, 3), (T, B, 3)), has_seen_lesion: (T, B)
+        self.agent.encoder.eval()
+        self.agent.patch_pred_head.eval()
+        self.agent.actor_head.eval()
         obs, next_obs, has_seen_lesion = self.agent.replay_buffer.sample_trajetories_eq_len(
             self.params["pre_train_batch_size"])
         obs, next_obs, has_seen_lesion = self.send_to_device_(obs, next_obs, has_seen_lesion)
@@ -144,14 +150,8 @@ class ViTPreTrainer(object):
         torch.save(self.agent.patch_pred_head.state_dict(), create_param_dir(self.params["model_save_dir"], "patch_pred_head.pt"))
 
     def send_to_device_(self, obs, next_obs, has_seen_lesion):
-        # print("before:")
-        # for item in (obs, next_obs, has_seen_lesion):
-        #     print_list_arrays(item)
         obs = [ptu.from_numpy(item).float() for item in obs]
         next_obs = [ptu.from_numpy(item).float() for item in next_obs]
         has_seen_lesion = ptu.from_numpy(has_seen_lesion).float()
-        # print("after:")
-        # for item in (obs, next_obs, has_seen_lesion):
-        #     print_list_arrays(item)
 
         return obs, next_obs, has_seen_lesion

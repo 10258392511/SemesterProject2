@@ -90,11 +90,13 @@ volumetric_env_params.update({
     "num_critic_updates_per_agent_update": 1,  # fixed to be 1
     "num_actor_updates_per_agent_update": 1,  # fixed to be 1
     "lam_cls": 1,
-    "replay_buffer_size": 50000,
+    "replay_buffer_size": 1000,
     "l2_tao": 10,
     "num_steps_to_memorize": 20,
     "max_num_videos": 1,
-    "max_video_len": 300
+    "max_video_len": 300,
+    "batch_size": 128,
+    "if_clip_grad": True
 })
 
 volumetric_sampling_policy_args = {

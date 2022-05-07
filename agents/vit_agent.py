@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 import SemesterProject2.helpers.pytorch_utils as ptu
 import SemesterProject2.scripts.configs_network as configs_network
 
@@ -13,7 +14,8 @@ class ViTAgent(BaseAgent):
         """
         params:
         configs_ac.volumetric_env_params:
-            num_target_steps, num_grad_steps_per_target_update, lam_cls, replay_buffer_size, dice_score_small_th, l2_tao
+            num_target_steps, num_grad_steps_per_target_update, lam_cls, replay_buffer_size,
+            dice_score_small_th, l2_tao, gamma, if_clip_grad
         As keys: configs_networks:
             encoder_params, *_head_params,
             encoder_opt_args, *_head_opt_args
@@ -21,6 +23,7 @@ class ViTAgent(BaseAgent):
         super(ViTAgent, self).__init__()
         self.params = params
         self.encoder = Encoder(self.params["encoder_params"]).to(ptu.device)
+        # TODO: load pre-trained Encoder
         self.patch_pred_head = MLPHead(self.params["patch_pred_head_params"]).to(ptu.device)
         self.critic_head = MLPHead(self.params["critic_head_params"]).to(ptu.device)
         self.actor_head = MLPHead(self.params["actor_head_params"]).to(ptu.device)
@@ -36,10 +39,59 @@ class ViTAgent(BaseAgent):
 
     def train(self, paths) -> dict:
         """
-        TODO: encoding -> compute total rewards -> (update critic -> actor -> patch_pred) -> merge info_dicts
+        encoding -> compute total rewards -> (update critic -> actor -> patch_pred) -> merge info_dicts
         All heads are updated only after a complete rollout, so total rewards can (should) be (pre-)computed only once.
+
+        after .unsqueeze(1), sending to device, (2 * X - 1):
+        obs, next_obs: ((T, 1, 1, P, P, P), (T, 1, 1, 2P, 2P, 2P), (T, 1, 3), (T, 1, 3))
+        acts: ((T, 1, 3), (T, 1, 3))
+        rewards: (T, 1)
+        terminals: (T, 1)
+        has_seen_lesion: (T, 1)
         """
-        pass
+        # .unsqueeze(1) and send to device (and 2 * X - 1) for all
+        info_dict = {}  # returns info for the last path
+        for path in paths:
+            self.encoder.train()
+            self.critic_head.train()
+            self.actor_head.train()
+            self.patch_pred_head.train()
+            obs, acts, rewards, next_obs, terminals, has_seen_lesion = self.unsqueeze_and_send_to_device_(path)
+            # all (T, B, N_emb)
+            embs_encoded, next_embs_encoded, next_embs = self.encoding_(obs, next_obs)
+            # compute total_reward: (T, 1)
+            with torch.no_grad():
+                self.actor_head.eval()
+                self.patch_pred_head.eval()
+                # (T, 1)
+                clf_reward, _ = self.compute_likelihood_and_penalty_(embs_encoded, acts, has_seen_lesion,
+                                                                     mode="clf_only")
+                # (T, 1)
+                _, novelty_reward = self.compute_novelty_seeking_reward_(embs_encoded, next_embs)
+                total_reward = (clf_reward + novelty_reward).detach()
+
+            self.actor_head.train()
+            self.patch_pred_head.train()
+
+            self.encoder_opt.zero_grad()
+            # print("updating critic...")
+            info_critic = self.update_critic(embs_encoded, next_embs_encoded, next_embs, has_seen_lesion,
+                                             total_reward, terminals)
+            # print("updating actor...")
+            info_actor = self.update_actor(embs_encoded, next_embs_encoded, acts, has_seen_lesion,
+                                           total_reward, terminals)
+            # print("updating patch_pred...")
+            info_patch_pred = self.update_patch_pred(embs_encoded, next_embs)
+            self.encoder_opt.step()
+
+            # for dict_iter in (info_critic, info_actor, info_patch_pred):
+            #     print(dict_iter)
+            # print("-" * 100)
+
+        for dict_iter in (info_critic, info_actor, info_patch_pred):
+            info_dict.update(dict_iter)
+
+        return info_dict
 
     def add_to_replay_buffer(self, paths):
         self.replay_buffer.add_rollouts(paths)
@@ -54,14 +106,80 @@ class ViTAgent(BaseAgent):
 
     def update_critic(self, embs_encoded, next_embs_encoded, next_embs, has_seen_lesion,
                       total_rewards, terminals) -> dict:
-        pass
+        # embs_encoded, next_embs_encoded, next_embs: (T, 1, N_emb), has_seen_lesion, total_rewards, terminals: (T, 1)
+        for _ in range(self.params["num_target_updates"]):
+            with torch.no_grad():
+                self.critic_head.eval()
+                # (T, 1)
+                _, v_vals_next = self.compute_v_vals_(embs_encoded, next_embs_encoded)
+                # (T,)
+                targets = (total_rewards + self.params["gamma"] * v_vals_next * (1 - terminals)).squeeze().detach()
+
+            self.critic_head.train()
+            for _ in range(self.params["num_grad_steps_per_target_update"]):
+                # (T, 1)
+                v_vals_cur, _ = self.compute_v_vals_(embs_encoded, next_embs_encoded)
+                loss = ((v_vals_cur.squeeze() - targets) ** 2).mean()
+                # self.encoder_opt.zero_grad()
+                self.critic_head_opt.zero_grad()
+                loss.backward(retain_graph=True)  # retain computational graph from input to output of .encoder
+                if self.params["if_clip_grad"]:
+                    nn.utils.clip_grad_value_(self.critic_head.parameters(),
+                                              self.params["critic_head_opt_args"]["clip_grad_val"])
+                # self.encoder_opt.step()
+                self.critic_head_opt.step()
+
+            return {"critic_loss": loss.item()}
 
     def update_actor(self, embs_encoded, next_embs_encoded, actions, has_seen_lesion,
                      total_rewards, terminals) -> dict:
-        pass
+        # embs_encoded, next_emb_encoded: (T, 1, N_emb), actions: ((T, 1, 3), (T, 1, 3)),
+        # has_seen_lesion, total_rewards, terminals: (T, 1)
+        # (T, 1), (1,)
+        bbox_lh, _, clf_penalty = self.compute_likelihood_and_penalty_(embs_encoded, actions, has_seen_lesion,
+                                                                       mode="all")
+        if_critic_train = self.critic_head.training
+        with torch.no_grad():
+            self.critic_head.eval()
+            v_vals_cur, v_vals_next = self.compute_novelty_seeking_reward_(embs_encoded, next_embs_encoded)
 
-    def update_patch_pred(self, novelty_loss):
-        pass
+        if if_critic_train:
+            self.critic_head.train()
+
+        # (T, 1)
+        adv = (total_rewards + self.params["gamma"] * v_vals_next * (1 - terminals)).detach()
+        nll = -(bbox_lh * adv).sum()
+        loss = nll + clf_penalty * self.params["lam_cls"]
+
+        # self.encoder_opt.zero_grad()
+        self.actor_head_opt.zero_grad()
+        loss.backward(retain_graph=True)  # retain computational graph from input to output of .encoder
+        if self.params["if_clip_grad"]:
+            nn.utils.clip_grad_value_(self.actor_head.parameters(),
+                                      self.params["actor_head_opt_args"]["clip_grad_val"])
+        # self.encoder_opt.step()
+        self.actor_head_opt.step()
+
+        return {
+            "actor_nll": nll.item(),
+            "actor_clf": clf_penalty.item(),
+            "actor_loss": loss.item()
+        }
+
+    def update_patch_pred(self, embs_encoded, next_embs):
+        # embs_encoded, next_embs: (T, 1, N_emb)
+        # (1,)
+        novelty_loss, _ = self.compute_novelty_seeking_reward_(embs_encoded, next_embs)
+        # self.encoder_opt.zero_grad()
+        self.patch_pred_head_opt.zero_grad()
+        novelty_loss.backward(retain_graph=False)  # last update step
+        if self.params["if_clip_grad"]:
+            nn.utils.clip_grad_value_(self.patch_pred_head.parameters(),
+                                      self.params["patch_pred_head_opt_args"]["clip_grad_val"])
+        # self.encoder.step()
+        self.patch_pred_head_opt.step()
+
+        return {"novelty_loss": novelty_loss.item()}
 
     def encode_seq_(self, obs):
         """
@@ -172,3 +290,30 @@ class ViTAgent(BaseAgent):
 
         # (1,), (T, B)
         return loss, reward
+
+    def unsqueeze_and_send_to_device_(self, path):
+        """
+        Also: 2 * X - 1 for patches
+
+        Returns
+        -------
+        obs, next_obs: ((T, 1, 1, P, P, P), (T, 1, 1, 2P, 2P, 2P), (T, 1, 3), (T, 1, 3))
+        acts: ((T, 1, 3), (T, 1, 3))
+        rewards: (T, 1)
+        terminals: (T, 1)
+        has_seen_lesion: (T, 1)
+        """
+        obs = [ptu.from_numpy(item).unsqueeze(1) for item in path["observations"]]
+        obs[0] = 2 * obs[0] - 1
+        obs[1] = 2 * obs[1] - 1
+
+        next_obs = [ptu.from_numpy(item).unsqueeze(1) for item in path["next_obs"]]
+        next_obs[0] = 2 * next_obs[0] - 1
+        next_obs[1] = 2 * next_obs[1] - 1
+
+        acts = [ptu.from_numpy(item).unsqueeze(1) for item in path["actions"]]
+        rewards = ptu.from_numpy(path["rewards"]).unsqueeze(1)
+        terminals = ptu.from_numpy(path["terminals"]).unsqueeze(1)
+        has_seen_lesion = ptu.from_numpy(path["infos"]["has_seen_lesion"]).unsqueeze(1)
+
+        return obs, acts, rewards, next_obs, terminals, has_seen_lesion
