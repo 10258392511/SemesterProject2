@@ -82,6 +82,9 @@ class ViTAgent(BaseAgent):
                                            total_reward, terminals)
             # print("updating patch_pred...")
             info_patch_pred = self.update_patch_pred(embs_encoded, next_embs)
+            if self.params["if_clip_grad"]:
+                nn.utils.clip_grad_value_(self.encoder.parameters(),
+                                          self.params["encoder_opt_args"]["clip_grad_val"])
             self.encoder_opt.step()
 
             # for dict_iter in (info_critic, info_actor, info_patch_pred):
