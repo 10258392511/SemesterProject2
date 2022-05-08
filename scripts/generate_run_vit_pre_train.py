@@ -4,14 +4,14 @@ import argparse
 
 def make_bash_script(hyper_param_dict: dict):
     """
-    This script should run in submission/
+    This script and submitting to sbatch should run in submission/
     Layout:
         + SemesterProject2
         + submission
     cd cmd: start from where the .sh file locates
     """
     bash_script = f"""#!/bin/bash
-#SBATCH --output=logs/%j.out
+#SBATCH --output=lesion_detection_log/%j.out
 #SBATCH --gres=gpu:1
 #SBATCH --mem=50G
 #SBATCH --cpus-per-task=5
@@ -19,7 +19,7 @@ eval "$(conda shell.bash hook)"
 conda activate RL
 cd ../SemesterProject2
 
-python ./script.py --num_pre_train_updates {hyper_param_dict["num_pre_train_updates"]} --pre_train_batch_size {hyper_param_dict["pre_train_batch_size"]}"""
+python ./scripts/run_vit_pre_train.py --num_pre_train_updates {hyper_param_dict["num_pre_train_updates"]} --pre_train_batch_size {hyper_param_dict["pre_train_batch_size"]}"""
 
     return bash_script
 
@@ -40,7 +40,10 @@ if __name__ == '__main__':
     """
     hyper_params = dict()
     # set 1
-    hyper_params[1] = [{"num_pre_train_updates": 1000, "pre_train_batch_size": 16}]
+    hyper_params[1] = [
+            {"num_pre_train_updates": 1000, "pre_train_batch_size": 16},
+            {"num_pre_train_updates": 1000, "pre_train_batch_size": 32}
+            ]
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--set_num", type=int, choices=hyper_params.keys(), required=True)

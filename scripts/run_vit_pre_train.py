@@ -1,9 +1,10 @@
 import sys
 
-path = "D:\\testings\\Python\\TestingPython"
-# path = "/home/zhexwu/Researches/biomedical_imaging"
+# path = "D:\\testings\\Python\\TestingPython"
+path = "/home/zhexwu/Researches/biomedical_imaging"
 if path not in sys.path:
     sys.path.append(path)
+
 
 import argparse
 import SemesterProject2.scripts.configs_ac as configs_ac
@@ -23,6 +24,9 @@ if __name__ == '__main__':
     """
     python ./scripts/run_vit_pre_train.py
     """
+    vm_base_dir = "/itet-stor/zhexwu/net_scratch/semester_project_experiments/deep_rl_lesion_detection"
+    local_base_dir = "."
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_pre_train_updates", type=int, default=1000)
     parser.add_argument("--pre_train_batch_size", type=int, default=6)
@@ -38,11 +42,19 @@ if __name__ == '__main__':
         "num_pre_train_updates": trainer_args["num_pre_train_updates"],
         "pre_train_batch_size": trainer_args["pre_train_batch_size"]
     }
+
+    orig_stdout = sys.stdout
+    orig_stderr = sys.stderr
+    
     log_dir_name = create_log_dir_name(time_stamp, log_dir_params)
+    log_file = open(f"/home/zhexwu/Researches/biomedical_imaging/submission/lesion_detection_log/{log_dir_name}.txt", "w")
+    sys.stdout = log_file
+    sys.stderr = log_file
+
     # TODO: change to tmp/ in VM
     trainer_args.update({
-        "log_dir": f"./run/vit_pre_train/{log_dir_name}",
-        "model_save_dir": f"./params/vit_pre_train/{log_dir_name}"
+        "log_dir": f"{local_base_dir}/run/vit_pre_train/{log_dir_name}",
+        "model_save_dir": f"{local_base_dir}/params/vit_pre_train/{log_dir_name}"
     })
 
     # Volumetric Env

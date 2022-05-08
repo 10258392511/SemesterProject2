@@ -24,9 +24,9 @@ class ViTPreTrainer(object):
         self.agent = vit_agent
         self.env = env
         self.sampling_policy = sampling_policy
-        self.encoder_scheduler = ReduceLROnPlateau(self.agent.encoder_opt, factor=0.9, patience=20)
-        self.actor_scheduler = ReduceLROnPlateau(self.agent.actor_head_opt, factor=0.9, patience=20)
-        self.patch_embed_scheduler = ReduceLROnPlateau(self.agent.patch_pred_head_opt, factor=0.9, patience=20)
+        self.encoder_scheduler = ReduceLROnPlateau(self.agent.encoder_opt, factor=0.9, patience=100)
+        self.actor_scheduler = ReduceLROnPlateau(self.agent.actor_head_opt, factor=0.9, patience=100)
+        self.patch_embed_scheduler = ReduceLROnPlateau(self.agent.patch_pred_head_opt, factor=0.9, patience=100)
 
         # for pre-training
         self.writer = SummaryWriter(self.params["log_dir"])
