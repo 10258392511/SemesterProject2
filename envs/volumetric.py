@@ -75,6 +75,12 @@ class Volumetric(Env):
             if self.is_in_vol_(self.center, 2 * self.size):
                 break
 
+        try:
+            assert np.all(np.array(patch_small.shape) > 0) and np.all(np.array(patch_large.shape) > 0), "shape <= 0"
+        except AssertionError:
+            print(f"vol: {self.vol.shape}, center: {self.center}, size: {self.size}")
+            raise AssertionError
+
         return patch_small, patch_large, self.center, self.size
 
     def render(self, mode="human"):
@@ -133,15 +139,29 @@ class Volumetric(Env):
         act_center, act_size = action
         done = False
         reward = self.params["fuel_cost"]
+
+        patch_small, patch_large = self.get_patch_by_center_size(act_center, act_size), \
+                                   self.get_patch_by_center_size(act_center, act_size * 2)
+        if not (np.all(np.array(patch_small.shape) > 0) and np.all(np.array(patch_large.shape) > 0)):
+            done = True
+        # if not np.all(act_size > 0):
+        #     done = True
+
         if not self.is_in_vol_(act_center, act_size * 2):
             done  = True
+
         if self.time_step > self.params["max_ep_len"]:
             done = True
+
         if not done:
             self.center, self.size = act_center, act_size
         patch_small, patch_large = self.get_patch_by_center_size(self.center, self.size), \
                                    self.get_patch_by_center_size(self.center, self.size * 2)
-        assert np.all(np.array(patch_small.shape) > 0) and np.all(np.array(patch_large.shape) > 0), "shape <= 0"
+        try:
+            assert np.all(np.array(patch_small.shape) > 0) and np.all(np.array(patch_large.shape) > 0), "shape <= 0"
+        except AssertionError:
+            print(f"vol: {self.vol.shape}, center: {self.center}, size: {self.size}")
+            raise AssertionError
 
         if done:
             reward += (self.dice_score_small + self.dice_score_large) * self.params["dice_reward_weighting"]
@@ -163,7 +183,7 @@ class Volumetric(Env):
 
     def is_in_vol_(self, center, size):
         start, end = center_size2start_end(center, size)
-        if np.all(start > 0) and np.all(end < np.array(self.vol.shape[::-1])):
+        if np.all(start > 0) and np.all(end <= np.array(self.vol.shape[::-1])):
             return True
         return False
 
@@ -213,6 +233,7 @@ class Volumetric(Env):
 
     def get_patch_by_center_size(self, center, size):
         assert self.vol is not None
+        # size = np.maximum(size, 1)
         start, end = center_size2start_end(center, size)
 
         return self.vol[start[2]:end[2], start[1]:end[1], start[0]:end[0]]

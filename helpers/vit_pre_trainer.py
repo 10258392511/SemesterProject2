@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import SemesterProject2.helpers.pytorch_utils as ptu
 
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
 from SemesterProject2.envs.volumetric import Volumetric
 from SemesterProject2.agents.policies.sampling_policy import SamplingPolicy
@@ -23,6 +24,9 @@ class ViTPreTrainer(object):
         self.agent = vit_agent
         self.env = env
         self.sampling_policy = sampling_policy
+        self.encoder_scheduler = ReduceLROnPlateau(self.agent.encoder_opt, factor=0.9, patience=20)
+        self.actor_scheduler = ReduceLROnPlateau(self.agent.actor_head_opt, factor=0.9, patience=20)
+        self.patch_embed_scheduler = ReduceLROnPlateau(self.agent.patch_pred_head_opt, factor=0.9, patience=20)
 
         # for pre-training
         self.writer = SummaryWriter(self.params["log_dir"])
@@ -41,13 +45,22 @@ class ViTPreTrainer(object):
             train_log_dict = self.pre_train_()
             eval_log_dict = self.pre_eval_()
 
+            self.encoder_scheduler.step(eval_log_dict[metric])
+            self.actor_scheduler.step(eval_log_dict[metric])
+            self.patch_embed_scheduler.step(eval_log_dict[metric])
+
             if best_eval_loss > eval_log_dict[metric]:
                 best_eval_loss = eval_log_dict[metric]
                 self.save_models_()
 
-            if num_iter % self.params["eval_interval"] == 0:
+            if num_iter % self.params["eval_interval"] == 0 or num_iter == self.params["num_pre_train_updates"] - 1:
                 # logging
                 print(f"iter {num_iter} / {self.params['num_pre_train_updates']}")
+                ### debugging only ###
+                for param in self.agent.encoder_opt.param_groups:
+                    print(f"current lr: {param['lr']}")
+                    break
+                ### end of debugging block ###
                 pprint(train_log_dict)
                 pprint(eval_log_dict)
                 print("-" * 50)
@@ -101,6 +114,8 @@ class ViTPreTrainer(object):
             "train_novelty_loss": novelty_loss.item(),
             "train_loss": loss.item()
         }
+
+        # print(log_dict)
 
         for tag, val in log_dict.items():
             self.writer.add_scalar(tag, val, self.global_steps["train"])
