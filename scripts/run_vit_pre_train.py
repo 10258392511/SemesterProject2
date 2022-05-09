@@ -5,7 +5,6 @@ path = "/home/zhexwu/Researches/biomedical_imaging"
 if path not in sys.path:
     sys.path.append(path)
 
-
 import argparse
 import SemesterProject2.scripts.configs_ac as configs_ac
 import SemesterProject2.scripts.configs_network as configs_network
@@ -42,14 +41,15 @@ if __name__ == '__main__':
         "num_pre_train_updates": trainer_args["num_pre_train_updates"],
         "pre_train_batch_size": trainer_args["pre_train_batch_size"]
     }
+    log_dir_name = create_log_dir_name(time_stamp, log_dir_params)
 
+    ### VM only ###
     orig_stdout = sys.stdout
     orig_stderr = sys.stderr
-    
-    log_dir_name = create_log_dir_name(time_stamp, log_dir_params)
     log_file = open(f"/home/zhexwu/Researches/biomedical_imaging/submission/lesion_detection_log/{log_dir_name}.txt", "w")
     sys.stdout = log_file
     sys.stderr = log_file
+    ### end of VM only block ###
 
     # TODO: change to tmp/ in VM
     trainer_args.update({

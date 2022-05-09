@@ -320,3 +320,18 @@ class ViTAgent(BaseAgent):
         has_seen_lesion = ptu.from_numpy(path["infos"]["has_seen_lesion"]).unsqueeze(1)
 
         return obs, acts, rewards, next_obs, terminals, has_seen_lesion
+
+    def load_encoder(self, filename):
+        assert self.encoder is not None
+        self.encoder.load_state_dict(torch.load(filename))
+        self.encoder.eval()
+
+    def load_heads(self, critic_filename, actor_filename, patch_pred_filename):
+        assert self.critic_head is not None
+        assert self.actor_head is not None
+        assert self.patch_pred_head is not None
+
+        for module_iter, filename_iter in zip((self.critic_head, self.actor_head, self.patch_pred_head),
+                                           (critic_filename, actor_filename, patch_pred_filename)):
+            module_iter.load_state_dict(torch.load(filename_iter))
+            module_iter.eval()

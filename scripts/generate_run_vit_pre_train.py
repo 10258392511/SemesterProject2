@@ -43,7 +43,7 @@ if __name__ == '__main__':
     hyper_params[1] = [
             {"num_pre_train_updates": 1000, "pre_train_batch_size": 16},
             {"num_pre_train_updates": 1000, "pre_train_batch_size": 32}
-            ]
+    ]
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--set_num", type=int, choices=hyper_params.keys(), required=True)
