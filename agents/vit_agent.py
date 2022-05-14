@@ -68,7 +68,7 @@ class ViTAgent(BaseAgent):
                                                                      mode="clf_only")
                 # (T, 1)
                 _, novelty_reward = self.compute_novelty_seeking_reward_(embs_encoded, next_embs)
-                total_reward = (clf_reward + novelty_reward).detach()
+                total_reward = (rewards + clf_reward + novelty_reward).detach()
 
             self.actor_head.train()
             self.patch_pred_head.train()
@@ -93,6 +93,8 @@ class ViTAgent(BaseAgent):
 
         for dict_iter in (info_critic, info_actor, info_patch_pred):
             info_dict.update(dict_iter)
+
+        info_dict["total_reward_last_path"] = total_reward.detach().cpu().numpy().sum()
 
         return info_dict
 
@@ -290,6 +292,7 @@ class ViTAgent(BaseAgent):
             # essentially Gaussian prior
             # (T, B, N_emb) -> (T, B)
             reward = 1 - torch.exp(-(l2_dist_squared.mean(dim=-1)) / self.params["l2_tao"])
+            # print(f"inside .compute_novelty_seeking_reward_(.): reward: {reward}")
 
         # (1,), (T, B)
         return loss, reward

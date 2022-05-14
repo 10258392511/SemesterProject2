@@ -8,12 +8,14 @@ from monai.transforms import Resize
 from torch.distributions import Normal
 from SemesterProject2.agents.policies.base_policy import BasePolicy
 from SemesterProject2.agents.vit_agent import ViTAgent
+from SemesterProject2.envs.volumetric import Volumetric
 
 
 class ViTPolicy(BasePolicy):
-    def __init__(self, agent: ViTAgent):
+    def __init__(self, agent: ViTAgent, env: Volumetric):
         super(ViTPolicy, self).__init__()
         self.agent = agent
+        self.env = env
         self.terminal = False
         self.obs_buffer = [None, None, None, None]  # list of ndarray
         self.resizer_small = Resize([configs_network.encoder_params["patch_size"]] * 3)
@@ -60,8 +62,10 @@ class ViTPolicy(BasePolicy):
             self.obs_buffer = [None, None, None, None]
 
         next_center, next_size = ptu.to_numpy(next_center).astype(int), ptu.to_numpy(next_size).astype(int)
+        # next_size = np.maximum(next_size, configs_network.encoder_params["patch_size"])  ### heuristic
         next_size = np.maximum(next_size, 1)  ### heuristic
-        # print(f"{next_center}, {next_size}")
+        next_center += self.env.get_vol_center_()[::-1]  ### heuristic
+        print(f"from ViTPolicy: next action: {next_center}, {next_size}")
 
         return next_center, next_size
 
