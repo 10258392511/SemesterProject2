@@ -102,7 +102,7 @@ def sample_trajectory(env: gym.Env, policy, max_path_length, render=False):
         act = policy.get_action(ob)
         acts.append(act)
         ob, rew, done, info = env.step(act)
-        env.render()
+        # env.render()
         if render:
             image_obs.append(env.render(mode="rgb_array"))
             # env.render()
@@ -172,7 +172,7 @@ class ReplayBuffer(object):
 
         return paths_out
 
-    def sample_trajetories_eq_len(self, batch_size, min_path_len=1, max_path_len=30):
+    def sample_trajetories_eq_len(self, batch_size, min_path_len=1, max_path_len=50):
         """
         For pre-training: can use batch-training. Returns maximum number of batches (rollouts) in case no sufficient
         rollouts. Considers new rollouts first. Old rollouts are used repeatedly but with varied path length.

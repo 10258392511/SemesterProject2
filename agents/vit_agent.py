@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import SemesterProject2.helpers.pytorch_utils as ptu
@@ -23,7 +24,7 @@ class ViTAgent(BaseAgent):
         super(ViTAgent, self).__init__()
         self.params = params
         self.encoder = Encoder(self.params["encoder_params"]).to(ptu.device)
-        # TODO: load pre-trained Encoder
+        # TODO: load pre-trained Encoder (done in ViTAgentTrainer)
         self.patch_pred_head = MLPHead(self.params["patch_pred_head_params"]).to(ptu.device)
         self.critic_head = MLPHead(self.params["critic_head_params"]).to(ptu.device)
         self.actor_head = MLPHead(self.params["actor_head_params"]).to(ptu.device)
@@ -64,7 +65,7 @@ class ViTAgent(BaseAgent):
                 self.actor_head.eval()
                 self.patch_pred_head.eval()
                 # (T, 1)
-                clf_reward, _ = self.compute_likelihood_and_penalty_(embs_encoded, acts, has_seen_lesion,
+                clf_reward, _ = self.compute_likelihood_and_penalty_(embs_encoded, None, has_seen_lesion,
                                                                      mode="clf_only")
                 # (T, 1)
                 _, novelty_reward = self.compute_novelty_seeking_reward_(embs_encoded, next_embs)
@@ -73,19 +74,19 @@ class ViTAgent(BaseAgent):
             self.actor_head.train()
             self.patch_pred_head.train()
 
-            self.encoder_opt.zero_grad()
+            # self.encoder_opt.zero_grad()
             # print("updating critic...")
             info_critic = self.update_critic(embs_encoded, next_embs_encoded, next_embs, has_seen_lesion,
                                              total_reward, terminals)
             # print("updating actor...")
-            info_actor = self.update_actor(embs_encoded, next_embs_encoded, acts, has_seen_lesion,
+            info_actor = self.update_actor(embs_encoded, next_embs_encoded, (obs, next_obs), has_seen_lesion,
                                            total_reward, terminals)
             # print("updating patch_pred...")
             info_patch_pred = self.update_patch_pred(embs_encoded, next_embs)
             if self.params["if_clip_grad"]:
                 nn.utils.clip_grad_value_(self.encoder.parameters(),
                                           self.params["encoder_opt_args"]["clip_grad_val"])
-            self.encoder_opt.step()
+            # self.encoder_opt.step()
 
             # for dict_iter in (info_critic, info_actor, info_patch_pred):
             #     print(dict_iter)
@@ -136,17 +137,18 @@ class ViTAgent(BaseAgent):
 
             return {"critic_loss": loss.item()}
 
-    def update_actor(self, embs_encoded, next_embs_encoded, actions, has_seen_lesion,
+    def update_actor(self, embs_encoded, next_embs_encoded, cur_and_next_obs, has_seen_lesion,
                      total_rewards, terminals) -> dict:
-        # embs_encoded, next_emb_encoded: (T, 1, N_emb), actions: ((T, 1, 3), (T, 1, 3)),
+        # embs_encoded, next_emb_encoded: (T, 1, N_emb)
+        # cur_and_next_obs: obs, next_obs: ((T, 1, P, P, P), (T, 1, 2P, 2P, 2P), (T, 1, 3), (T, 1, 3)),
         # has_seen_lesion, total_rewards, terminals: (T, 1)
         # (T, 1), (1,)
-        bbox_lh, _, clf_penalty = self.compute_likelihood_and_penalty_(embs_encoded, actions, has_seen_lesion,
+        bbox_lh, _, clf_penalty = self.compute_likelihood_and_penalty_(embs_encoded, cur_and_next_obs, has_seen_lesion,
                                                                        mode="all")
         if_critic_train = self.critic_head.training
         with torch.no_grad():
             self.critic_head.eval()
-            v_vals_cur, v_vals_next = self.compute_novelty_seeking_reward_(embs_encoded, next_embs_encoded)
+            v_vals_cur, v_vals_next = self.compute_v_vals_(embs_encoded, next_embs_encoded)
 
         if if_critic_train:
             self.critic_head.train()
@@ -238,13 +240,13 @@ class ViTAgent(BaseAgent):
         # both (T, B)
         return v_vals_current, v_vals_next
 
-    def compute_likelihood_and_penalty_(self, embs_encoded, acts_in, has_seen_lesion, mode="all"):
+    def compute_likelihood_and_penalty_(self, embs_encoded, cur_and_next_obs, has_seen_lesion, mode="all"):
         """
         Parameters
         ----------
         All: Tensor, already sent to device
         embs_encoded: (T, B, N_emb)
-        acts: ((T, B, 3), (T, B, 3))
+        (cur_and_next_obs): obs, next_obs: ((T, B, 1, P, P, P), (T, B, 1, 2P, 2P, 2P), (T, B, 3), (T, B, 3))
         has_seen_lesion: (T, B)
 
         Returns
@@ -272,8 +274,13 @@ class ViTAgent(BaseAgent):
         if mode == "clf_only":
             return clf_reward, clf_penalty
 
-        normal_distr = Normal(mu, log_sigma.exp())  # (T, B, 3)
-        bbox_lh = normal_distr.log_prob(acts_in[0]).sum(dim=-1)  # (T, B, 3) -> (T, B)
+        obs, next_obs = cur_and_next_obs
+        delta_mu = next_obs[2] - obs[2]  # (T, B, 3)
+        sigma_cur = log_sigma.exp() * obs[3]  # (T, B, 3) * (T, B, 3)
+        ### TODO: back to fixed bbox size
+        sigma_cur = ptu.from_numpy(np.array(self.params["init_size"]))
+        normal_distr = Normal(mu, sigma_cur)  # (T, B, 3)
+        bbox_lh = normal_distr.log_prob(delta_mu).sum(dim=-1)  # (T, B, 3) -> (T, B)
 
         return bbox_lh, clf_reward, clf_penalty
 

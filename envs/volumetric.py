@@ -164,7 +164,11 @@ class Volumetric(Env):
             raise AssertionError
 
         if done:
-            reward += (self.dice_score_small + self.dice_score_large) * self.params["dice_reward_weighting"]
+            # reward += (self.dice_score_small + self.dice_score_large) * self.params["dice_reward_weighting"]
+            if self.dice_score_small > self.params["dice_score_small_th"]:
+                reward += self.params["dice_reward_weighting"]
+            else:
+                reward -= self.params["dice_reward_weighting"]
             return (patch_small, patch_large, self.center, self.size), reward, done, \
                    {"dice_score_small": self.dice_score_small, "dice_score_large": self.dice_score_large}
 

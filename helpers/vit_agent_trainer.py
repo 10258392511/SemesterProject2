@@ -67,7 +67,7 @@ class ViTAgentTrainer(object):
     @torch.no_grad()
     def perform_logging(self, paths, train_log_dict, if_print=False):
         print("Collecting eval paths...")
-        eval_paths, eval_video_paths = self.collect_training_trajectories(if_video=if_print)
+        eval_paths, eval_video_paths = self.collect_training_trajectories(if_video=False)
 
         # compute statistics
         train_ep_lens = np.array([path["rewards"].shape[0] for path in paths])
@@ -105,8 +105,8 @@ class ViTAgentTrainer(object):
             self.save_agent_params()
 
         # log videos
-        if if_print:
-            assert len(eval_video_paths) > 0
+        if if_print and len(eval_video_paths) > 0:
+            # assert len(eval_video_paths) > 0
             eval_img_clips = [path["image_obs"] for path in eval_video_paths]  # list[(T, H, W, 3)]
             eval_img_clips = np.stack(eval_img_clips, axis=0)  # (N, T, H, W, 3)
             eval_img_clips = ptu.from_numpy(eval_img_clips).detach().cpu().permute(0, 1, 4, 2, 3)  # (N, T, 3, H, W)

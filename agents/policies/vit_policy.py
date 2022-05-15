@@ -35,12 +35,19 @@ class ViTPolicy(BasePolicy):
         # ((t, 1, P, P, P), (t, 1, 2P, 2P, 2P), (t, 3), (t, 3))
         self.add_to_buffer_(patch_small, patch_large, center, size)
         # ((t, 1, 1, P, P, P), (t, 1, 1, 2P, 2P, 2P), (t, 1, 3), (t, 1, 3))
-        obs_buffer = [ptu.from_numpy(item).float().unsqueeze(1) for item in self.obs_buffer]
+        obs_buffer = [ptu.from_numpy(item.copy()).float().unsqueeze(1) for item in self.obs_buffer]
+        # print(f"inside .get_action(.): {obs_buffer[0].shape}, {obs_buffer[0][-1, :, :, 0, 0, :]}")
+        ### already done in .agent.encode_seq_(.)
+        # obs_buffer[0] = 2 * obs_buffer[0] - 1
+        # obs_buffer[1] = 2 * obs_buffer[1] - 1
+
+        # embs = self.agent.encode_seq_(obs_buffer)  # (t, 1, N_emb)
         obs_buffer[0] = 2 * obs_buffer[0] - 1
         obs_buffer[1] = 2 * obs_buffer[1] - 1
-
-        embs = self.agent.encode_seq_(obs_buffer)  # (t, 1, N_emb)
+        embs = self.agent.encoder(*obs_buffer[:3])
+        print(f"inside .get_action(.): emb: {embs[-1, 0, -10:]}")
         act = self.agent.actor_head(embs[-1:, ...]).squeeze()  # (1, 1, 8) -> (8,)
+        print(f"inside .get_action(.): act: {act}")
         mu, log_sigma = act[:3], act[3:6]  # both (3,)
 
         ### debugging only ###
@@ -48,10 +55,12 @@ class ViTPolicy(BasePolicy):
         # mu, log_sigma = obs_buffer[2][-1, 0, :], log_sigma
         ### end of debugging block ###
 
-        sigma = log_sigma.exp()
-        distr = Normal(mu, sigma)
-        next_center = distr.sample()  # (3,)
-        next_size = sigma
+        sigma_next = log_sigma.exp() * ptu.from_numpy(obs[3])  # (3,) * (3,)
+        ### TODO: back to fixed size
+        sigma_next = ptu.from_numpy(np.array(self.agent.params["init_size"]))
+        distr = Normal(mu, sigma_next)
+        next_center = ptu.from_numpy(obs[2]) + distr.sample()  # (3,)
+        next_size = sigma_next
 
         if if_encoder_train:
             self.agent.encoder.train()
@@ -63,8 +72,8 @@ class ViTPolicy(BasePolicy):
 
         next_center, next_size = ptu.to_numpy(next_center).astype(int), ptu.to_numpy(next_size).astype(int)
         # next_size = np.maximum(next_size, configs_network.encoder_params["patch_size"])  ### heuristic
-        next_size = np.maximum(next_size, 1)  ### heuristic
-        next_center += self.env.get_vol_center_()[::-1]  ### heuristic
+        # next_size = np.maximum(next_size, 1)  ### heuristic
+        # next_center += self.env.get_vol_center_()[::-1]  ### heuristic
         print(f"from ViTPolicy: next action: {next_center}, {next_size}")
 
         return next_center, next_size

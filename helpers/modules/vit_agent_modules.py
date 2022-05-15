@@ -34,7 +34,8 @@ class Encoder(nn.Module):
         T, B, C_in, P = X_small.shape[:4]
         assert P == self.params["patch_size"] and C_in == self.params["in_channels"]
         X_pos = X_pos.to(X_small.dtype)
-        X_pos = self.pos_emb(X_pos)  # (T, B, d_model)
+        if self.params["if_pos_enc"]:
+            X_pos = self.pos_emb(X_pos)  # (T, B, d_model)
         X_large = X_large.reshape((T, B, C_in, 2, P, 2, P, 2, P))
         X_large = X_large.permute((0, 1, 2, 3, 5, 7, 4, 6, 8))  # (T, B, C_in, 2, 2, 2, P, P, P)
         X_large = X_large.reshape(T, B, -1, P, P, P)  # (T, B, C_in * 8, P, P, P)
@@ -42,7 +43,8 @@ class Encoder(nn.Module):
         X = X.reshape(-1, 9 * C_in, P, P, P)  # (T * B, 9 * C_in, P, P, P)
         X = self.patch_embed(X).squeeze()  # (T * B, d_model, 1, 1, 1) -> (T * B, d_model)
         X = X.reshape((T, B, -1))  # (T, B, d_model)
-        X = X + X_pos  # (T, B, d_model)
+        if self.params["if_pos_enc"]:
+            X = X + X_pos  # (T, B, d_model)
 
         return X
 

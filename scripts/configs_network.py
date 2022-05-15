@@ -10,7 +10,7 @@ encoder_params = {
     "dim_feedforward": 2048,
     "dropout": 0.1,
     "num_layers": 12,
-    "if_pos_enc": True
+    "if_pos_enc": False
 }
 
 base_head_params = {

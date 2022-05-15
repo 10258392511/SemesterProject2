@@ -79,9 +79,9 @@ lunar_lander_actor_opt_params = {
 # Volumetric
 volumetric_env_params = base_env_params.copy()
 volumetric_env_params.update({
-    "max_ep_len": 10,
+    "max_ep_len": 100,
     "init_size": (16, 16, 16),
-    "dice_reward_weighting": 1000,  # per DQN paper on DCE-MRI, the final bonus
+    "dice_reward_weighting": 100,  # per DQN paper on DCE-MRI, the final bonus
     "fuel_cost": -0.03,
     "dice_score_small_th": 1e-6,
     "gamma": 0.999,
@@ -91,10 +91,10 @@ volumetric_env_params.update({
     "num_actor_updates_per_agent_update": 1,  # fixed to be 1
     "lam_cls": 1,
     "replay_buffer_size": 1000,
-    "l2_tao": 1000,
+    "l2_tao": 200,
     "num_steps_to_memorize": 20,
     "max_num_videos": 1,
-    "max_video_len": 10,
+    "max_video_len": 100,
     "batch_size": 128,
     "if_clip_grad": True
 })
