@@ -97,7 +97,10 @@ volumetric_env_params.update({
     "max_num_videos": 1,
     "max_video_len": 100,
     "batch_size": 128,
-    "if_clip_grad": True
+    "if_clip_grad": True,
+    "num_updates_patch_pred": 10,
+    "false_neg_weight": 20,
+    "conf_score_threshold": 0.5
 })
 
 volumetric_sampling_policy_args = {

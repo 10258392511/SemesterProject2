@@ -314,6 +314,9 @@ class ReplayBufferGreedy(object):
         Returns a list of transitions.
         """
         indices = np.random.choice(self.buffer["terminals"].shape[0], batch_size, replace=False)
+        # make sure to sample the most recent one
+        indices = np.concatenate([indices, np.array(self.buffer["terminals"].shape[0] - 1 -
+                                                    self.params["num_steps_to_memorize"])[None, ...]], axis=0)
         transitions = []
         for ind in indices:
             if self.buffer["terminals"][ind]:

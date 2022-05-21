@@ -35,6 +35,11 @@ actor_head_params.update({
     "out_features": 8  # mu: 3, sigma: 3, cls: 2 (for convenience to convert to Categorical: (pos, neg))
 })
 
+clf_head_params = base_head_params.copy()
+clf_head_params.update({
+    "out_features": 2
+})
+
 ##### model optimizers #####
 base_opt_args = {
     "class": AdamW,
@@ -51,3 +56,5 @@ patch_pred_head_opt_args = base_opt_args.copy()
 critic_head_opt_args = base_opt_args.copy()
 
 actor_head_opt_args = base_opt_args.copy()
+
+clf_head_opt_args = base_opt_args.copy()
