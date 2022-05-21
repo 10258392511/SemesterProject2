@@ -5,9 +5,9 @@ from torch.optim import AdamW
 encoder_params = {
     "in_channels": 1,
     "patch_size": 16,
-    "d_model": 768,
-    "nhead": 8,
-    "dim_feedforward": 2048,
+    "d_model": 64,
+    "nhead": 4,
+    "dim_feedforward": 128,
     "dropout": 0.1,
     "num_layers": 12,
     "if_pos_enc": False

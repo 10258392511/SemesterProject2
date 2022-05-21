@@ -83,7 +83,8 @@ volumetric_env_params.update({
     "init_size": (16, 16, 16),
     "dice_reward_weighting": 100,  # per DQN paper on DCE-MRI, the final bonus
     "fuel_cost": -0.03,
-    "dice_score_small_th": 1e-6,
+    "dice_score_small_th": 0.1,
+    "eps_dsc": 1e-6,
     "gamma": 0.999,
     "num_target_updates": 2,  # 10
     "num_grad_steps_per_target_update": 2,  # 10
@@ -103,4 +104,9 @@ volumetric_sampling_policy_args = {
     "max_ep_len": volumetric_env_params["max_ep_len"],
     "translation_scale": 1 / 3,
     "size_scale": 1 / 6
+}
+
+volumetric_sampling_policy_greedy_args = {
+    "max_ep_len": volumetric_env_params["max_ep_len"],
+    "translation_scale": 1 / 4,
 }

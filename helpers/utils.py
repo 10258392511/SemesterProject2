@@ -162,3 +162,12 @@ def print_list_arrays(obs):
         print([item.shape for item in obs])
     else:
         print(obs.shape)
+
+def convert_to_rel_pos(pos: np.ndarray, size: np.ndarray):
+    """
+    Convert to [-1, 1]
+    """
+    rel_pos = pos - size / 2
+    rel_pos = rel_pos / size
+
+    return rel_pos

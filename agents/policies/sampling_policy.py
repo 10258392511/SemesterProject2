@@ -47,3 +47,6 @@ class SamplingPolicy(BasePolicy):
             self.size_last_signs[dim] = sign
 
         return next_center.astype(np.int), next_size.astype(np.int)
+
+    def clear_buffer(self):
+        pass

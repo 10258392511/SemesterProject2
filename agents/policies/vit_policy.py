@@ -9,6 +9,7 @@ from torch.distributions import Normal
 from SemesterProject2.agents.policies.base_policy import BasePolicy
 from SemesterProject2.agents.vit_agent import ViTAgent
 from SemesterProject2.envs.volumetric import Volumetric
+from pprint import pprint
 
 
 class ViTPolicy(BasePolicy):
@@ -20,10 +21,16 @@ class ViTPolicy(BasePolicy):
         self.obs_buffer = [None, None, None, None]  # list of ndarray
         self.resizer_small = Resize([configs_network.encoder_params["patch_size"]] * 3)
         self.resizer_large = Resize([configs_network.encoder_params["patch_size"] * 2] * 3)
+        self.doc = {"emb": [[]], "center": [[]], "size": [[]]}
 
     @torch.no_grad()
     def get_action(self, obs) -> np.ndarray:
         # obs: ((P_x, P_y, P_z), (2P_x, 2P_y, 2P_y), (3,), (3,))
+        # if self.terminal:
+        #     self.obs_buffer = [None, None, None, None]
+        #     self.doc.append([])
+        #     print(f"doc: {self.doc}")
+
         if_encoder_train = self.agent.encoder.training
         if_actor_train = self.agent.actor_head.training
         self.agent.encoder.eval()
@@ -67,14 +74,14 @@ class ViTPolicy(BasePolicy):
         if if_actor_train:
             self.agent.actor_head.train()
 
-        if self.terminal:
-            self.obs_buffer = [None, None, None, None]
-
         next_center, next_size = ptu.to_numpy(next_center).astype(int), ptu.to_numpy(next_size).astype(int)
         # next_size = np.maximum(next_size, configs_network.encoder_params["patch_size"])  ### heuristic
         # next_size = np.maximum(next_size, 1)  ### heuristic
         # next_center += self.env.get_vol_center_()[::-1]  ### heuristic
         print(f"from ViTPolicy: next action: {next_center}, {next_size}")
+        self.doc["emb"][-1].append((np.max(ptu.to_numpy(embs)), np.min(ptu.to_numpy(embs))))
+        self.doc["center"][-1].append((ptu.to_numpy(mu), next_center))
+        self.doc["size"][-1].append((ptu.to_numpy(log_sigma.exp()), next_size))
 
         return next_center, next_size
 
@@ -93,3 +100,9 @@ class ViTPolicy(BasePolicy):
         else:
             for i in range(len(self.obs_buffer)):
                self.obs_buffer[i] = np.concatenate([self.obs_buffer[i][1:, ...], obs[i][None, ...]], axis=0)
+
+    def clear_buffer(self):
+        self.obs_buffer = [None, None, None, None]
+        for key in self.doc:
+            self.doc[key].append([])
+        # pprint(f"doc: {self.doc}")
