@@ -5,7 +5,7 @@ import SemesterProject2.helpers.pytorch_utils as ptu
 import SemesterProject2.scripts.configs_network as configs_network
 
 from torch.distributions import Normal
-from sklearn.metrics import precision_score, recall_score
+from sklearn.metrics import precision_score, recall_score, f1_score
 from itertools import product
 from SemesterProject2.agents.base_agent import BaseAgent
 from SemesterProject2.helpers.modules.vit_agent_modules import EncoderGreedy, MLPHead
@@ -112,7 +112,7 @@ class ViTGreedyAgent(BaseAgent):
             X_emb_enc = self.encoder(X_small, X_large, X_pos, X_pos_next)  # (1, N_emb)
             X_clf_pred = self.clf_head(X_emb_enc)  # (1, 2)
             weight = 1 if not has_lesion else self.params["false_neg_weight"]
-            print(f"has_lesion: {has_lesion}, weight: {weight}")
+            # print(f"has_lesion: {has_lesion}, weight: {weight}")
             loss = self.ce(X_clf_pred, has_lesion.unsqueeze(0)) * weight
             self.encoder_opt.zero_grad()
             self.clf_head_opt.zero_grad()
@@ -134,6 +134,7 @@ class ViTGreedyAgent(BaseAgent):
         log_dict["clf_acc"] = (y_true == y_pred) / len(transitions)
         log_dict["clf_precision"] = precision_score(y_true, y_pred)
         log_dict["clf_recall"] = recall_score(y_true, y_pred)
+        log_dict["clf_f1"] = f1_score(y_true, y_pred)
 
         return log_dict
 

@@ -68,7 +68,7 @@ class Volumetric(Env):
         while True:
             vol_center = self.get_vol_center_()[::-1]
             # sample .center from N(.center, .size ** 2)
-            self.center = (vol_center + np.random.randn(*self.size.shape) * self.size).astype(np.int)
+            self.center = (vol_center + np.random.randn(*self.size.shape) * self.size * 3).astype(np.int)
             patch_small = self.get_patch_by_center_size(self.center, self.size)
             patch_large = self.get_patch_by_center_size(self.center, self.size * 2)
 
