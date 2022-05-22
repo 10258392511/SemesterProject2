@@ -251,18 +251,5 @@ class VolumetricForGreedy(Volumetric):
         obs, reward, done, info_dict = super(VolumetricForGreedy, self).step(action)
         # D, H, W -> x, y, z
         info_dict["vol_size"] = np.array(self.vol.shape[::-1])
-        # info_dict["vol_size_x"] = self.vol.shape[-1]
-        # info_dict["vol_size_y"] = self.vol.shape[-2]
-        # info_dict["vol_size_z"] = self.vol.shape[-3]
-
-        # bbox_centers = []
-        # for bbox_coord in self.bbox_coord:
-        #     # (x_min, y_min, z_min, x_size, y_size, z_size)
-        #     bbox_coord_half_len = len(bbox_coord) // 2
-        #     bbox_center, _ = start_size2center_size(bbox_coord[:bbox_coord_half_len],
-        #                                                 bbox_coord[bbox_coord_half_len:])
-        #     bbox_centers.append(bbox_center)
-        #
-        # info_dict["bbox_centers"] = bbox_centers  # list[ndarray]
 
         return obs, reward, done, info_dict

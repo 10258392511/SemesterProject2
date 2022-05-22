@@ -100,7 +100,8 @@ volumetric_env_params.update({
     "if_clip_grad": True,
     "num_updates_patch_pred": 10,
     "false_neg_weight": 20,
-    "conf_score_threshold": 0.5
+    "conf_score_threshold": 0.5,
+    "translation_scale": 1 / 4
 })
 
 volumetric_sampling_policy_args = {
