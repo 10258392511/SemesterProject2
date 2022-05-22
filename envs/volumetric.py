@@ -33,7 +33,7 @@ class Volumetric(Env):
         self.closest_lesion_seg = None
         self.time_step = 0
         self.dice_score_small, self.dice_score_large = 0, 0
-        self.cv_window_name = "VolumetricEnv"
+        self.cv_window_name = f"VolumetricEnv{self.params['mode']}"
         self.sample_index = None
 
     def close(self):
@@ -68,12 +68,12 @@ class Volumetric(Env):
         while True:
             vol_center = self.get_vol_center_()[::-1]
             # sample .center from N(.center, .size ** 2)
-            self.center = (vol_center + np.random.randn(*self.size.shape) * self.size * 3).astype(np.int)
-            patch_small = self.get_patch_by_center_size(self.center, self.size)
-            patch_large = self.get_patch_by_center_size(self.center, self.size * 2)
-
+            self.center = (vol_center + np.random.randn(*self.size.shape) * self.size).astype(np.int)
             if self.is_in_vol_(self.center, 2 * self.size):
                 break
+
+        patch_small = self.get_patch_by_center_size(self.center, self.size)
+        patch_large = self.get_patch_by_center_size(self.center, self.size * 2)
 
         try:
             assert np.all(np.array(patch_small.shape) > 0) and np.all(np.array(patch_large.shape) > 0), "shape <= 0"

@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import random
@@ -5,7 +6,7 @@ import SemesterProject2.helpers.pytorch_utils as ptu
 
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
-from sklearn.metrics import precision_score, recall_score
+from sklearn.metrics import precision_score, recall_score, f1_score
 from SemesterProject2.envs.volumetric import VolumetricForGreedy
 from SemesterProject2.helpers.replay_buffer_vit import ReplayBufferGreedy
 from SemesterProject2.agents.policies.sampling_policy_greedy import FixedSizeSampingPolicy
@@ -25,28 +26,45 @@ class ViTGreedyAgentTrainer(object):
         self.params = params
         self.agent = vit_greedy_agent
         self.eval_env = eval_env
-        self.eval_replay_buffer = ReplayBufferGreedy(self.params)
-        self.eval_policy = FixedSizeSampingPolicy(self.params)
+        self.eval_replay_buffer = ReplayBufferGreedy(self.agent.params)
+        self.eval_policy = FixedSizeSampingPolicy(self.agent.params)
         self.encoder_scheduler = ReduceLROnPlateau(self.agent.encoder_opt, factor=0.9, patience=100)
         self.patch_pred_scheduler = ReduceLROnPlateau(self.agent.patch_pred_head_opt, factor=0.9, patience=100)
         self.clf_scheduler = ReduceLROnPlateau(self.agent.clf_head_opt, factor=0.9, patience=100)
 
         # for pre-training
         self.writer = SummaryWriter(self.params["log_dir"])
+        self.global_train_steps = 0
         self.global_steps = 0
 
     def train_(self):
+        print("Collecting training transitions...")
         X_small, X_large, X_pos, X_size = self.agent.env.reset()
         log_dict = {}
+        manual_choice = random.choice([False, True])
+        if manual_choice:
+            bbox_coord = random.choice(self.agent.env.bbox_coord)
+            bbox_coord_half_len = len(bbox_coord) // 2
+            start, size = bbox_coord[:bbox_coord_half_len], bbox_coord[bbox_coord_half_len:]
+            bbox_center, _ = start_size2center_size(start, size)
+            self.agent.env.center = (bbox_center + np.random.randn(*X_size.shape) * X_size).astype(int)
+        (X_small, X_large, X_pos, X_size), _, _, _ = self.agent.env.step((self.agent.env.center, self.agent.env.size))
+
         while True:
             act = self.agent.get_action((X_small, X_large, X_pos, X_size))
             (X_small, X_large, X_pos, X_size), _, done, info = self.agent.env.step(act)
             # TODO: comment out
-            self.agent.env.render()
+            # self.agent.env.render()
             self.agent.add_to_replay_buffer(X_small, X_large, X_pos, done, info)
             if self.agent.can_sample(self.params["batch_size"]):
                 transitions = self.agent.sample(self.params["batch_size"])
                 log_dict = self.agent.train(transitions)
+
+                for key, val in log_dict.items():
+                    tag = f"train_{key}"
+                    self.writer.add_scalar(tag, val, self.global_train_steps)
+                self.global_train_steps += 1
+
             if done:
                 self.agent.clear_buffer()
                 break
@@ -58,21 +76,22 @@ class ViTGreedyAgentTrainer(object):
         """
         Sample two trajectories: random start and start from a lesion region.
         """
-        self.eval_env.reset()
-        bbox_coord = random.choice(self.eval_env.bbox_coord)
-        bbox_coord_half_len = len(bbox_coord) // 2
-        start, size = bbox_coord[:bbox_coord_half_len], bbox_coord[bbox_coord_half_len:]
-        bbox_center, _ = start_size2center_size(start, size)
-        start_pos = [self.eval_env.center, bbox_center]
-
-        for start_pos_iter in start_pos:
-            self.eval_env.center = start_pos_iter
+        print("Collecting eval transitions...")
+        for manual_choice in [False, True]:
+            X_small, X_large, X_pos, X_size = self.eval_env.reset()
+            if manual_choice:
+                bbox_coord = random.choice(self.eval_env.bbox_coord)
+                bbox_coord_half_len = len(bbox_coord) // 2
+                start, size = bbox_coord[:bbox_coord_half_len], bbox_coord[bbox_coord_half_len:]
+                bbox_center, _ = start_size2center_size(start, size)
+                # self.eval_env.center = (bbox_center + np.random.randn(*X_size.shape) * X_size).astype(int)
+                self.eval_env.center = bbox_center
             (X_small, X_large, X_pos, X_size), _, _, _ = self.eval_env.step((self.eval_env.center, self.eval_env.size))
             while True:
                 act = self.eval_policy.get_action((X_small, X_large, X_pos, X_size))
                 (X_small, X_large, X_pos, X_size), _, done, info = self.eval_env.step(act)
                 # TODO: comment out
-                self.eval_env.render()
+                # self.eval_env.render()
                 self.eval_replay_buffer.add_to_buffer(X_small, X_large, X_pos, done, info)
                 if done:
                     break
@@ -91,10 +110,12 @@ class ViTGreedyAgentTrainer(object):
                 X_pos = torch.cat([X_pos, X_pos_next], dim=0)
                 X_emb_enc = self.agent.encoder(X_small, X_large, X_pos, X_pos_next)  # (1, N_emb)
                 X_clf_pred = self.agent.clf_head(X_emb_enc)  # (1, 2)
-                y_pred.append(ptu.to_numpy(X_clf_pred[0, 1] > self.params["conf_score_threshold"]).astype(int))
+                y_pred.append(ptu.to_numpy(X_clf_pred[0, 1] > self.agent.params["conf_score_threshold"]).astype(int))
                 y_true.append(ptu.to_numpy(has_lesion))
 
-            log_dict["eval_clf_acc"] = (y_true == y_pred) / len(transitions)
+            y_true = np.array(y_true)
+            y_pred = np.array(y_pred)
+            log_dict["eval_clf_acc"] = (y_true == y_pred).sum() / len(transitions)
             log_dict["eval_clf_precision"] = precision_score(y_true, y_pred)
             log_dict["eval_clf_recall"] = recall_score(y_true, y_pred)
             log_dict["eval_clf_f1"] = f1_score(y_true, y_pred)
@@ -102,15 +123,14 @@ class ViTGreedyAgentTrainer(object):
         return log_dict
 
     def train(self):
-        if self.params["notebook"]:
+        if self.params["if_notebook"]:
             from tqdm.notebook import trange
         else:
             from tqdm import trange
         pbar = trange(self.params["num_episodes"])
 
         log_dict = {}
-        best_eval_metric_key = "eval_f1_score"
-        best_eval_metric = 0
+        best_eval_f1, best_eval_acc = 0, 0
         for i in pbar:
             if_print = (i % self.params["print_interval"] == 0)
             train_log_dict = self.train_()
@@ -118,9 +138,15 @@ class ViTGreedyAgentTrainer(object):
             log_dict.update(train_log_dict)
             log_dict.update(eval_log_dict)
 
+            if len(log_dict) == 0:
+                continue
+
             # save models
-            if eval_log_dict[best_eval_metric_key] > best_eval_metric:
-                best_eval_metric = eval_log_dict[best_eval_metric_key]
+            if eval_log_dict["eval_clf_f1"] >= best_eval_f1:
+                best_eval_f1 = eval_log_dict["eval_clf_f1"]
+                self.save_models_()
+            elif eval_log_dict["eval_clf_acc"] >= best_eval_acc:
+                best_eval_acc = eval_log_dict["eval_clf_acc"]
                 self.save_models_()
 
             # logging
@@ -138,18 +164,40 @@ class ViTGreedyAgentTrainer(object):
         if len(log_dict) == 0:
             return
 
-        for key, val in log_dict:
+        for key, val in log_dict.items():
             self.writer.add_scalar(key, val, self.global_steps)
+            print(f"{key}: {val:.3f}")
 
         if if_print:
-            for key, val in log_dict:
-                print(f"{key}: {val:.3f}")
-            print("-" * 100)
-            self.log_video_()
+            try:
+                self.log_video_()
+            except Exception:
+                pass
+        print("-" * 100)
 
         self.global_steps += 1
 
-
     def log_video_(self):
         # collect a path from .eval_env
-        pass
+        print("collecting video...")
+        num_steps = 0
+        X_small, X_large, X_pos, X_size = self.eval_env.reset()
+        max_ep_len = self.agent.params["max_video_len"]
+        img_clips = []
+        while True:
+            num_steps += 1
+            action = self.agent.get_action((X_small, X_large, X_pos, X_size))
+            (X_small, X_large, X_pos, X_size), _, done, _ = self.eval_env.step(action)
+            # TODO: comment out
+            # self.eval_env.render()
+            img_clips.append(self.eval_env.render("rgb_array"))
+            if num_steps == max_ep_len:
+                done = True
+            if done:
+                self.agent.clear_buffer()
+                break
+        # (1, T, H, W, C)
+        img_clips = np.stack(img_clips, axis=0)[None, ...]
+        img_clips = torch.tensor(img_clips).permute(0, 1, 4, 2, 3)  # (1, T, C, H, W)
+        # print(f"video length: {img_clips.shape}")
+        self.writer.add_video("eval_video", img_clips, global_step=self.global_steps, fps=15)

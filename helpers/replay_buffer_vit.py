@@ -271,7 +271,7 @@ class ReplayBufferGreedy(object):
         return out_str
 
     def can_sample(self, batch_size):
-        if batch_size < self.num_transitions:
+        if batch_size + self.params["num_steps_to_memorize"] > self.num_transitions:
             return False
         return True
 
@@ -313,16 +313,25 @@ class ReplayBufferGreedy(object):
         """
         Returns a list of transitions.
         """
-        indices = np.random.choice(self.buffer["terminals"].shape[0], batch_size, replace=False)
-        # make sure to sample the most recent one
-        indices = np.concatenate([indices, np.array(self.buffer["terminals"].shape[0] - 1 -
-                                                    self.params["num_steps_to_memorize"])[None, ...]], axis=0)
+        valid_sampling = False
+        while not valid_sampling:
+            indices = np.random.choice(self.buffer["terminals"].shape[0] - 1, batch_size, replace=False)
+            # make sure to sample the most recent one
+            indices = np.concatenate([indices, np.array(self.buffer["terminals"].shape[0] - 1 -
+                                                        self.params["num_steps_to_memorize"])[None, ...]], axis=0)
+            for ind in indices:
+                if not self.buffer["terminals"][ind]:
+                    valid_sampling = True
+                    break
+
         transitions = []
         for ind in indices:
             if self.buffer["terminals"][ind]:
                 continue
             transition = self.sample_transition_(ind)
             transitions.append(transition)
+
+        # TODO: test .sample_transition_lesion_(.) and concatenate all transitions
 
         return transitions
 
@@ -343,7 +352,7 @@ class ReplayBufferGreedy(object):
         terminal_window = self.buffer["terminals"][start_ind:start_ind + self.params["num_steps_to_memorize"]]
         end_ind = np.where(terminal_window)[0]
         if len(end_ind) == 0:
-            end_ind = start_ind + self.params["num_steps_to_memorize"]
+            end_ind = min(start_ind + self.params["num_steps_to_memorize"], self.buffer["terminals"].shape[0] - 1)
         else:
             end_ind = start_ind + end_ind[0]
 
@@ -358,6 +367,37 @@ class ReplayBufferGreedy(object):
         has_lesion = self.buffer["has_lesion"][end_ind]
 
         return X_small, X_large, X_pos, X_small_next, X_large_next, X_pos_next, has_lesion
+
+    def sample_transition_lesion_(self, batch_size):
+        transitions = []
+        lesion_inds = np.argwhere(self.buffer["has_lesion"])[0]
+        batch_size = min(batch_size, lesion_ind.shape[0])
+        if batch_size == 0:
+            return transitions
+
+        lesion_inds_selected = np.random.choice(lesion_inds, batch_size, replace=False)
+        for ind in lesion_inds_selected:
+            start_ind = max(0, ind - self.params["num_steps_to_memorize"] - 1)
+            window = self.buffer["terminals"][start_ind:ind]
+            start_ind_offset = np.where(window)[0]
+            if len(start_ind_offset) == 0:
+                start_ind_offset = 0
+            else:
+                start_ind_offset = start_ind_offset[-1]
+            start_ind += start_ind_offset
+            end_ind = ind
+
+            X_small = self.buffer["patches_small"][start_ind:end_ind, None, ...]  # (t, 1, P, P, P) -> (t, 1, 1, P, P, P)
+            X_large = self.buffer["patches_large"][start_ind:end_ind, None, ...]
+            X_pos = self.buffer["rel_pos"][start_ind:end_ind, None, ...]
+            X_small_next = self.buffer["patches_small"][end_ind:end_ind + 1, None, ...]
+            X_large_next = self.buffer["patches_large"][end_ind:end_ind + 1, None, ...]
+            X_pos_next = self.buffer["rel_pos"][end_ind:end_ind + 1, None, ...]
+            has_lesion = self.buffer["has_lesion"][end_ind]
+
+            transitions.append((X_small, X_large, X_pos, X_small_next, X_large_next, X_pos_next, has_lesion))
+
+        return transitions
 
     @staticmethod
     def print_transitions(transitions):

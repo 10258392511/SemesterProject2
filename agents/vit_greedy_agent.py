@@ -45,7 +45,7 @@ class ViTGreedyAgent(BaseAgent):
                            "rel_pos": None}
         self.last_dsc_small = 0
         self.last_dsc_large = 0
-        self.mse = nn.MSELoss()
+        self.mse = nn.MSELoss(reduction="sum")
         self.ce = nn.CrossEntropyLoss()
         self.action_space = list(product([-self.params["translation_scale"], 0, self.params["translation_scale"]],
                                          repeat=3))
@@ -61,6 +61,7 @@ class ViTGreedyAgent(BaseAgent):
         return self.replay_buffer.sample(batch_size)
 
     def train(self, transitions: list):
+        print("training...")
         transitions = [self.send_to_device_(transition) for transition in transitions]
         log_dict = {}
         patch_pred_log = self.update_patch_pred_head_(transitions)
@@ -68,10 +69,11 @@ class ViTGreedyAgent(BaseAgent):
         log_dict.update(patch_pred_log)
         log_dict.update(clf_log)
 
+        print(log_dict)
         return log_dict
 
     def update_patch_pred_head_(self, transitions: list):
-        print("updating patch pred...")
+        # print("updating patch pred...")
         log_dict = {}
 
         for i, transition in enumerate(transitions):
@@ -98,7 +100,7 @@ class ViTGreedyAgent(BaseAgent):
         return log_dict
 
     def update_clf_head_(self, transitions: list):
-        print("updating clf...")
+        # print("updating clf...")
         log_dict = {}
         # acc = 0
         y_pred, y_true = [], []
@@ -131,7 +133,9 @@ class ViTGreedyAgent(BaseAgent):
             log_dict["clf_loss"] = loss.item()
 
         # log_dict["clf_acc"] = acc / len(transitions)
-        log_dict["clf_acc"] = (y_true == y_pred) / len(transitions)
+        y_true = np.array(y_true)
+        y_pred = np.array(y_pred)
+        log_dict["clf_acc"] = (y_true == y_pred).sum() / len(transitions)
         log_dict["clf_precision"] = precision_score(y_true, y_pred)
         log_dict["clf_recall"] = recall_score(y_true, y_pred)
         log_dict["clf_f1"] = f1_score(y_true, y_pred)
