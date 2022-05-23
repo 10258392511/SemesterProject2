@@ -31,10 +31,11 @@ pip install -e .
  </table>
 
 ### Greedy Policy
-Episodes 1 & 10
+Episodes 1 , 10 & 35
 <table>
   <tr>
-    <td><img src="results/vit_greedy/episode_1.gif" width=300 height=400></td>
-    <td><img src="results/vit_greedy/episode_10.gif" width=300 height=400></td>
+    <td><img src="results/vit_greedy/episode_1.gif" width=200 height=300></td>
+    <td><img src="results/vit_greedy/episode_10.gif" width=200 height=300></td>
+    <td><img src="results/vit_greedy/episode_35.gif" width=200 height=300></td>
    <tr>
 </table>
