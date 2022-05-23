@@ -8,8 +8,8 @@ pip install -e .
   - CartPole-v0 (Before & After Training):
     <table>
       <tr>
-         <td><img src="results/dqn_cart_pole/dqn_cart_pole_episode_1.gif" width=400 height=480></td>
-         <td><img src="results/dqn_cart_pole/dqn_cart_pole_episode_300.gif" width=400 height=480></td>
+         <td><img src="results/dqn_cart_pole/dqn_cart_pole_episode_1.gif" width=300 height=300></td>
+         <td><img src="results/dqn_cart_pole/dqn_cart_pole_episode_300.gif" width=300 height=300></td>
       </tr>
     </table>
     
@@ -17,8 +17,8 @@ pip install -e .
   - LunarLander-v3 (Before & After Training):
     <table>
       <tr>
-         <td><img src="results/dqn_lunar_lander/dqn_lunar_lander_episode_1.gif" width=400 height=480></td>
-         <td><img src="results/dqn_lunar_lander/dqn_lunar_lander_episode_500.gif" width=400 height=480></td>
+         <td><img src="results/dqn_lunar_lander/dqn_lunar_lander_episode_1.gif" width=300 height=300></td>
+         <td><img src="results/dqn_lunar_lander/dqn_lunar_lander_episode_500.gif" width=300 height=300></td>
       </tr>
     </table>
 
