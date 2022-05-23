@@ -15,7 +15,7 @@ from SemesterProject2.envs.volumetric import Volumetric
 
 
 class ViTGreedyAgent(BaseAgent):
-    def __init__(self, params, env: Volumetric):
+    def __init__(self, params, env: Volumetric, eval_env=None):
         """
         params:
         configs_ac.volumetric_env_params:
@@ -28,6 +28,7 @@ class ViTGreedyAgent(BaseAgent):
         """
         super(ViTGreedyAgent, self).__init__()
         self.env = env
+        self.eval_env = eval_env
         self.params = params
         self.encoder = EncoderGreedy(self.params["encoder_params"]).to(ptu.device)
         self.patch_pred_head = MLPHead(self.params["patch_pred_head_params"]).to(ptu.device)
@@ -153,9 +154,20 @@ class ViTGreedyAgent(BaseAgent):
         for act in self.action_space:
             X_pos_next_candidate = (X_pos + act * X_size).astype(int)
             # print(X_pos_next_candidate)
-            dsc_small = self.compute_dsc_(X_pos_next_candidate, X_size)
-            dsc_large = self.compute_dsc_(X_pos_next_candidate, X_size * 2)
-            novelty = self.compute_novelty_(X_pos_next_candidate)
+            if self.eval_env is not None:
+                if not self.eval_env.is_in_vol_(X_pos_next_candidate, X_size * 2):
+                    dsc_small, dsc_large, novelty = 0, 0, 0
+                else:
+                    dsc_small = self.compute_dsc_(X_pos_next_candidate, X_size)
+                    dsc_large = self.compute_dsc_(X_pos_next_candidate, X_size * 2)
+                    novelty = self.compute_novelty_(X_pos_next_candidate)
+            else:
+                if not self.env.is_in_vol_(X_pos_next_candidate, X_size * 2):
+                    dsc_small, dsc_large, novelty = 0, 0, 0
+                else:
+                    dsc_small = self.compute_dsc_(X_pos_next_candidate, X_size)
+                    dsc_large = self.compute_dsc_(X_pos_next_candidate, X_size * 2)
+                    novelty = self.compute_novelty_(X_pos_next_candidate)
             next_dsc_small.append(dsc_small)
             next_dsc_large.append(dsc_large)
             next_novelty.append(novelty)

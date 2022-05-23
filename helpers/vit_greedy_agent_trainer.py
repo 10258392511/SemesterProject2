@@ -47,7 +47,8 @@ class ViTGreedyAgentTrainer(object):
             bbox_coord_half_len = len(bbox_coord) // 2
             start, size = bbox_coord[:bbox_coord_half_len], bbox_coord[bbox_coord_half_len:]
             bbox_center, _ = start_size2center_size(start, size)
-            self.agent.env.center = (bbox_center + np.random.randn(*X_size.shape) * X_size).astype(int)
+            self.agent.env.center = (bbox_center + np.random.randn(*X_size.shape) * X_size / 4).astype(int)
+            # self.agent.env.center = bbox_center
         (X_small, X_large, X_pos, X_size), _, _, _ = self.agent.env.step((self.agent.env.center, self.agent.env.size))
 
         while True:
@@ -142,12 +143,13 @@ class ViTGreedyAgentTrainer(object):
                 continue
 
             # save models
-            if eval_log_dict["eval_clf_f1"] >= best_eval_f1:
-                best_eval_f1 = eval_log_dict["eval_clf_f1"]
-                self.save_models_()
-            elif eval_log_dict["eval_clf_acc"] >= best_eval_acc:
-                best_eval_acc = eval_log_dict["eval_clf_acc"]
-                self.save_models_()
+            # if eval_log_dict["eval_clf_f1"] >= best_eval_f1:
+            #     best_eval_f1 = eval_log_dict["eval_clf_f1"]
+            #     self.save_models_()
+            # elif eval_log_dict["eval_clf_acc"] >= best_eval_acc:
+            #     best_eval_acc = eval_log_dict["eval_clf_acc"]
+            #     self.save_models_()
+            self.save_models_()
 
             # logging
             self.perform_logging_(log_dict, if_print)
@@ -169,10 +171,7 @@ class ViTGreedyAgentTrainer(object):
             print(f"{key}: {val:.3f}")
 
         if if_print:
-            try:
-                self.log_video_()
-            except Exception:
-                pass
+            self.log_video_()
         print("-" * 100)
 
         self.global_steps += 1
@@ -183,6 +182,7 @@ class ViTGreedyAgentTrainer(object):
         num_steps = 0
         X_small, X_large, X_pos, X_size = self.eval_env.reset()
         max_ep_len = self.agent.params["max_video_len"]
+        self.agent.eval_env = self.eval_env
         img_clips = []
         while True:
             num_steps += 1
@@ -201,3 +201,4 @@ class ViTGreedyAgentTrainer(object):
         img_clips = torch.tensor(img_clips).permute(0, 1, 4, 2, 3)  # (1, T, C, H, W)
         # print(f"video length: {img_clips.shape}")
         self.writer.add_video("eval_video", img_clips, global_step=self.global_steps, fps=15)
+        self.agent.eval_env = None

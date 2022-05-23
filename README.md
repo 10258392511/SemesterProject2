@@ -29,3 +29,10 @@ pip install -e .
     <td><img src="results/volumetric_sampling_policy/title.gif" width=750 height=480></td>
   </tr>
  </table>
+
+### Greedy Policy
+Episode 1 & 10
+<table>
+    <tr><img src="results/vit_greedy/episode_1.gif" width="300" height="400"></tr>
+    <tr><img src="results/vit_greedy/episode_10.gif" width="300" height="400"></tr>
+</table>
