@@ -2,10 +2,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 import os
+import SemesterProject2.helpers.pytorch_utils as ptu
 
+from itertools import product
 from SemesterProject2.agents.vit_greedy_agent import ViTGreedyAgent
 from SemesterProject2.envs.volumetric import VolumetricForGreedy
-from SemesterProject2.helpers.utils import center_size2start_end
+from SemesterProject2.helpers.utils import center_size2start_end, create_param_dir, convert_to_rel_pos, record_gif
 
 
 class ViTGreedyPredictor(object):
@@ -14,24 +16,31 @@ class ViTGreedyPredictor(object):
         params: configs_ac.volumetric_env_params, configs_network.*_params
         bash:
             param_paths: {"encoder": "*.pt", "clf_head": ..., "patch_pred_head": ...}
+            video_save_dir
             mode: "cartesion" or "explore"
             order: "zyx"...
-            grid_size: (3, 3)
+            grid_size: (3, 3, 3), "xyz"
         """
         self.params = params
         self.env = VolumetricForGreedy(params)
-        self.agent = ViTGreedyAgent(params)
+        self.env.reset()
+        self.agent = ViTGreedyAgent(params, self.env)
         self.agent.load_encoder(self.params["param_paths"]["encoder"])
-        self.agent.load_heads(self.params["param_paths"]["clf_head"],
-                              self.params["param_paths"]["patch_pred_head"])
+        self.agent.load_heads(self.params["param_paths"]["patch_pred_head"],
+                              self.params["param_paths"]["clf_head"])
         self.trajectory = None  # [(X_pos, terminal)]
+        # (T, 1, 1, P, P, P), (T, 1, 2P, 2P, 2P), (T, 1, 3)
         self.obs_buffer = {
             "patches_small": None,
             "patches_large": None,
             "rel_pos": None
         }
-        self.init_pos_grid = self.init_grid_()
+        self.init_pos_grid = None  # (N, 3)
+        self.init_grid_()
         self.mse = nn.MSELoss()
+        self.action_space = list(product([-self.params["translation_scale"], 0, self.params["translation_scale"]],
+                                         repeat=3))
+        self.action_space = [np.array(action) for action in self.action_space if action != (0, 0, 0)]
 
     @torch.no_grad()
     def predict(self):
@@ -65,7 +74,15 @@ class ViTGreedyPredictor(object):
         return next_center.astype(int), next_size
 
     def init_grid_(self):
-        pass
+        grid_w, grid_h, grid_d = self.params["grid_size"]
+        D, H, W = self.env.vol.shape
+        xx = np.linspace(0, W - 1, grid_w + 1)
+        yy = np.linspace(0, H - 1, grid_h + 1)
+        zz = np.linspace(0, D - 1, grid_d + 1)
+        xx = np.clip((xx[:-1] + W / grid_w / 2).astype(int), 0, W - 1)
+        yy = np.clip((yy[:-1] + H / grid_h / 2).astype(int), 0, H - 1)
+        zz = np.clip((zz[:-1] + D / grid_d / 2).astype(int), 0, D - 1)
+        self.init_pos_grid = np.array(list(product(xx, yy, zz)))
 
     def add_to_buffer_(self, X_small, X_large, X_pos):
         """
@@ -116,7 +133,7 @@ class ViTGreedyPredictor(object):
         # (1, 1, 1, P, P, P), (1, 1, 1, 2P, 2P, 2P)
         X_next_candidate_small = ptu.from_numpy(X_next_candidate_small).reshape(1, 1, 1, *X_next_candidate_small.shape) * 2 - 1
         X_next_candidate_large = ptu.from_numpy(X_next_candidate_large).reshape(1, 1, 1, *X_next_candidate_large.shape) * 2 - 1
-        X_next_patch_emb = self.encoder.emb_patch(X_next_candidate_small, X_next_candidate_large).squeeze()  # (1, 1, N_emb) -> (N_emb)
+        X_next_patch_emb = self.agent.encoder.emb_patch(X_next_candidate_small, X_next_candidate_large).squeeze()  # (1, 1, N_emb) -> (N_emb)
         novelty = self.mse(X_next_pred, X_next_patch_emb)
 
         return novelty.item()
@@ -134,9 +151,73 @@ class ViTGreedyPredictor(object):
         pass
 
     def nms_(self, bboxes, scores):
+        # time complexity: O(n)
+        indices = np.argsort(scores, axis=-1)
+        indices = indices[::-1]
+        scores = scores[indices]
+        bboxes = bboxes[indices, ...]
+        visited = np.zeros_like(scores, dtype=bool)
+        selected_bboxes = []
+        selected_scores = []
+
+        for i in range(scores.shape[0]):
+            if visited[i]:
+                continue
+            visited[i] = True
+            bbox_iter = bboxes[i, ...]
+            selected_bboxes.append(bbox_iter)
+            selected_scores.append(scores[i])
+            for j in range(i + 1, scores.shape[0]):
+                bbox_other_iter = bboxes[j, ...]
+                iou_score = self.iou_(bbox_iter, bbox_other_iter)
+                if iou_score > self.params["iou_threshold"]:
+                    visited[j] = True
+
+        return np.array(selected_bboxes), np.array(selected_scores)
+
+    def iou_(self, bbox1, bbox2):
+        # bbox1, bbox2: (6,)
+        def compute_vol(start, end):
+            sides = np.maximum(end - start, 0)
+
+            return np.product(sides)
+
+        bbox_half_len = len(bbox1) // 2
+        top_left = np.stack([bbox1[:bbox_half_len], bbox2[:bbox_half_len]], axis=0)  # (2, 3)
+        bottom_right = np.stack([bbox1[bbox_half_len:], bbox2[bbox_half_len:]], axis=0)  # (2, 3)
+        intersec_top_left = np.max(top_left, axis=0)  # (3,)
+        intersec_bottom_right = np.min(bottom_right, axis=0)  # (3,)
+        intersec_area = compute_vol(intersec_top_left, intersec_bottom_right)
+        area1 = compute_vol(bbox1[:bbox_half_len], bbox1[bbox_half_len:])
+        area2 = compute_vol(bbox2[:bbox_half_len], bbox2[bbox_half_len:])
+        union_area = area1 + area2 - intersec_area
+        # print(f"area1: {area1}, area2: {area2}, union: {union_area}, intersection: {intersec_area}")
+
+        return intersec_area / union_area
+
+    def predict_cartesian_(self):
         pass
 
-    def predict_explore_iter_(self, init_pos, if_video=False):
+    def predict_explore_(self, if_video=False):
+        video_path = None
+        bboxes, scores = [], []
+        if if_video:
+            assert self.env.index is not None
+            index = self.env.index
+            video_dir = os.path.join(self.params["video_save_dir"], f"test_{index}")
+        for i in range(self.init_pos_grid.shape[0]):
+            init_pos = self.init_pos_grid[i, :]  # (3,)
+            if not self.env.is_in_vol_(init_pos, self.env.size):
+                continue
+            if if_video:
+                video_path = create_param_dir(video_dir, f"agent_{i}.gif")
+            bboxes_iter, scores_iter = self.predict_explore_iter_(init_pos, if_video, video_path=video_path)
+            bboxes += bboxes_iter
+            scores += scores_iter
+
+        return np.array(bboxes), np.array(scores)
+
+    def predict_explore_iter_(self, init_pos, if_video=False, **kwargs):
         num_steps = 0
         X_small, X_large, X_pos, X_size = self.env.reset()
         self.env.center = init_pos
@@ -152,7 +233,8 @@ class ViTGreedyPredictor(object):
             (X_small, X_large, X_pos, X_size), _, done, _ = self.env.step(action)
             conf_score = self.classify_()
             if conf_score > self.params["conf_score_threshold"]:
-                bboxes.append(center_size2start_end(X_pos, X_size))
+                start, end = center_size2start_end(X_pos, X_size)
+                bboxes.append(np.concatenate([start, end], axis=0))
                 scores.append(conf_score)
             # TODO: comment out
             self.env.render()
@@ -165,13 +247,21 @@ class ViTGreedyPredictor(object):
                 break
 
         if if_video:
-            # TODO: use moviepy to save video
-            pass
+            assert kwargs.get("video_path", None) is not None
+            record_gif(img_clips, kwargs["video_path"], fps=15)
 
+        # list
         return bboxes, scores
 
     def classify_(self):
-        # TODO: use .obs_buffer to predict classification
-        conf_score = 1
+        # (T, 1, 1, P, P, P), (T, 1, 2P, 2P, 2P), (T, 1, 3)
+        X_small, X_large, X_pos = self.obs_buffer["patches_small"], self.obs_buffer["patches_large"], \
+                                  self.obs_buffer["rel_pos"]
+        X_small = ptu.from_numpy(2 * X_small - 1)
+        X_large = ptu.from_numpy(2 * X_large - 1)
+        X_pos = ptu.from_numpy(X_pos)
+        X_enc = self.agent.encoder(X_small, X_large, X_pos, X_pos[-1:, ...])  # (1, N_emb)
+        X_clf = torch.softmax(self.agent.clf_head(X_enc), dim=-1)  # (1, 2)
+        conf_score = X_clf[0, 1].item()
 
         return conf_score

@@ -103,7 +103,8 @@ volumetric_env_params.update({
     "num_updates_clf": 20,
     "false_neg_weight": 1,
     "conf_score_threshold": 0.5,
-    "translation_scale": 1 / 4
+    "translation_scale": 1 / 4,
+    "iou_threshold": 0.2
 })
 
 volumetric_sampling_policy_args = {

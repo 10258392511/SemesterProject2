@@ -16,7 +16,7 @@ class Volumetric(Env):
     def __init__(self, params):
         """
         params:
-            bash: hdf5_filename, data_splitted_filename, mode, seed
+            bash: hdf5_filename, data_splitted_filename, mode, seed, index (opt)
             env: max_ep_len, init_size, dice_reward_weighting, fuel_cost
         coord: x, y, z
         """
@@ -35,6 +35,7 @@ class Volumetric(Env):
         self.dice_score_small, self.dice_score_large = 0, 0
         self.cv_window_name = f"VolumetricEnv{self.params['mode']}"
         self.sample_index = None
+        self.index = self.params["index"]
 
     def close(self):
         # close .cv_window
@@ -57,6 +58,7 @@ class Volumetric(Env):
         # sample one volume from .dataset
         np.random.seed(seed)
         index = np.random.randint(len(self.dataset))
+        index = self.index if self.index is not None else index
         self.vol, self.seg, self.bbox_coord = self.dataset[index]
         self.center = None
         self.size = np.array(self.params["init_size"])

@@ -184,7 +184,7 @@ class ViTGreedyAgentTrainer(object):
                 print(f"{key}: {val:.3f}")
 
         if if_print:
-            self.log_video_()
+            # self.log_video_()
             if "train_video" in log_dict:
                 img_clips = log_dict["train_video"]
                 img_clips = np.stack(img_clips, axis=0)[None, ...]
