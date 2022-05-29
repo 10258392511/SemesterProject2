@@ -1,13 +1,13 @@
 from torch.nn import Identity
-from torch.optim import AdamW
+from torch.optim import AdamW, SGD
 
 ##### model param configs #####
 encoder_params = {
     "in_channels": 1,
     "patch_size": 16,
-    "d_model": 64,
+    "d_model": 32,
     "nhead": 4,
-    "dim_feedforward": 128,
+    "dim_feedforward": 64,
     "dropout": 0.1,
     "num_layers": 12,
     "if_pos_enc": False
@@ -42,9 +42,9 @@ clf_head_params.update({
 
 ##### model optimizers #####
 base_opt_args = {
-    "class": AdamW,
+    "class": SGD,
     "args": {
-        "lr": 1e-3
+        "lr": 1e-4
     },
     "clip_grad_val": 1
 }
@@ -58,3 +58,8 @@ critic_head_opt_args = base_opt_args.copy()
 actor_head_opt_args = base_opt_args.copy()
 
 clf_head_opt_args = base_opt_args.copy()
+clf_head_opt_args.update({
+"args": {
+        "lr": 1e-4
+    }
+})

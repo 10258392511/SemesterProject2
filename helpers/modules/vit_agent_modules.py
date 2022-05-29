@@ -115,6 +115,8 @@ class EncoderGreedy(nn.Module):
         X = X.reshape(-1, 9 * C_in, P, P, P)  # (T * B, 9 * C_in, P, P, P)
         X = self.patch_embed(X).squeeze()  # (T * B, d_model, 1, 1, 1) -> (T * B, d_model)
         X = X.reshape((T, B, -1))  # (T, B, d_model)
+        X_norm = torch.norm(X, dim=-1, keepdim=True)
+        X = X / X_norm
 
         return X
 

@@ -331,7 +331,8 @@ class ReplayBufferGreedy(object):
             transition = self.sample_transition_(ind)
             transitions.append(transition)
 
-        # TODO: test .sample_transition_lesion_(.) and concatenate all transitions
+        transitions_lesion = self.sample_transition_lesion_(batch_size)
+        transitions += transitions_lesion
 
         return transitions
 
@@ -350,7 +351,8 @@ class ReplayBufferGreedy(object):
         has_lesion: float
         """
         terminal_window = self.buffer["terminals"][start_ind:start_ind + self.params["num_steps_to_memorize"]]
-        end_ind = np.where(terminal_window)[0]
+        end_ind = np.argwhere(terminal_window).flatten()
+        # print(f"from .sample_transition_: {end_ind}")
         if len(end_ind) == 0:
             end_ind = min(start_ind + self.params["num_steps_to_memorize"], self.buffer["terminals"].shape[0] - 1)
         else:
@@ -369,9 +371,11 @@ class ReplayBufferGreedy(object):
         return X_small, X_large, X_pos, X_small_next, X_large_next, X_pos_next, has_lesion
 
     def sample_transition_lesion_(self, batch_size):
+        # backward: OK to end in a terminal step; whereas the sampling above is forward,
+        # i.e. can't start at a terminal step
         transitions = []
-        lesion_inds = np.argwhere(self.buffer["has_lesion"])[0]
-        batch_size = min(batch_size, lesion_ind.shape[0])
+        lesion_inds = np.argwhere(self.buffer["has_lesion"]).flatten()
+        batch_size = min(batch_size, lesion_inds.shape[0])
         if batch_size == 0:
             return transitions
 
@@ -379,7 +383,7 @@ class ReplayBufferGreedy(object):
         for ind in lesion_inds_selected:
             start_ind = max(0, ind - self.params["num_steps_to_memorize"] - 1)
             window = self.buffer["terminals"][start_ind:ind]
-            start_ind_offset = np.where(window)[0]
+            start_ind_offset = np.argwhere(window).flatten()
             if len(start_ind_offset) == 0:
                 start_ind_offset = 0
             else:
