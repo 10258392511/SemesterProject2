@@ -31,15 +31,18 @@ class ViTGreedyPredictor(object):
         self.agent.load_encoder(self.params["param_paths"]["encoder"])
         self.agent.load_heads(self.params["param_paths"]["patch_pred_head"],
                               self.params["param_paths"]["clf_head"])
-        self.trajectory = None  # [(X_pos, terminal)]
+        if self.params["mode"] != "explore":
+            self.ordering = {"z": 0, "y": 1, "x": 2}
+            self.trajectory = self.init_trajectory_()  # [(X_pos, terminal)], generator
         # (T, 1, 1, P, P, P), (T, 1, 2P, 2P, 2P), (T, 1, 3)
         self.obs_buffer = {
             "patches_small": None,
             "patches_large": None,
             "rel_pos": None
         }
-        self.init_pos_grid = None  # (N, 3)
-        self.init_grid_()
+        if self.params["mode"] == "explore":
+            self.init_pos_grid = None  # (N, 3)
+            self.init_grid_()
         self.mse = nn.MSELoss()
         self.action_space = list(product([-self.params["translation_scale"], 0, self.params["translation_scale"]],
                                          repeat=3))
@@ -143,6 +146,29 @@ class ViTGreedyPredictor(object):
         next_size = X_size
 
         return next_center.astype(int), next_size
+
+    def init_trajectory_(self):
+        # e.g. xzy: 2, 0, 1 -> xyz: 2, 1, 0: P = [[1, 0, 0], [0, 0, 1], [0, 1, 0]]
+        ordering_in_inds = [self.ordering[dim] for dim in self.params["order"]]
+        ordering_out_inds = [self.ordering[dim] for dim in "xyz"]
+        permute_mat = np.zeros((3, 3))
+        for i, ind_out in enumerate(ordering_out_inds):
+            for j, ind_in in enumerate(ordering_in_inds):
+                if ind_in == ind_out:
+                    permute_mat[i, j] = 1.
+
+        shape = np.array(self.env.vol.shape)[ordering_in_inds]
+        step_size = np.array(self.params["init_size"])[ordering_in_inds] * self.params["translation_scale"]
+        step_size = step_size.astype(int)
+        for i_iter in range(0, shape[0], step_size[0]):
+            for j_iter in range(0, shape[1], step_size[1]):
+                for k_iter in range(0, shape[2], step_size[2]):
+                    # e.g. xzy -> xyz
+                    coord = permute_mat @ np.array([i_iter, j_iter, k_iter])
+                    terminal = False
+                    if k_iter + step_size[2] > shape[2] - 1:
+                        terminal = True
+                    yield coord, terminal
 
     def init_grid_(self):
         grid_w, grid_h, grid_d = self.params["grid_size"]
