@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib.pyplot as plt
+import cv2 as cv
 import torch
 import torch.nn as nn
 import os
@@ -7,7 +9,8 @@ import SemesterProject2.helpers.pytorch_utils as ptu
 from itertools import product
 from SemesterProject2.agents.vit_greedy_agent import ViTGreedyAgent
 from SemesterProject2.envs.volumetric import VolumetricForGreedy
-from SemesterProject2.helpers.utils import center_size2start_end, create_param_dir, convert_to_rel_pos, record_gif
+from SemesterProject2.helpers.utils import center_size2start_end, start_size2center_size, start_size2start_end, \
+    create_param_dir, convert_to_rel_pos, record_gif
 
 
 class ViTGreedyPredictor(object):
@@ -44,11 +47,79 @@ class ViTGreedyPredictor(object):
 
     @torch.no_grad()
     def predict(self):
+        """
+        Returns: bboxes: (N, 6), [start, end]; conf_scores: (N,)
+        """
         pass
 
     @torch.no_grad()
     def evaluate(self, bboxes):
-        pass
+        def evaluate_iter(bbox):
+            patch_mask = self.env.convert_bbox_coord_to_mask_(bbox)
+            intersection = (self.env.seg * patch_mask).sum()
+            dice_score = 2 * intersection / (patch_mask.sum() + self.env.seg.sum())
+
+            return dice_score
+
+        dice_scores = []
+        for bbox in bboxes:
+            dice_scores.append(evaluate_iter(bbox))
+        dice_scores = np.array(dice_scores)
+
+        return dice_scores, dice_scores > self.params["dice_score_small_th"]
+
+    @torch.no_grad()
+    def render_lesion_slices(self, bboxes):
+        # renders the slices at center of a GT lesion bbox
+        def render_lesion_slice(slice_ind):
+            img_slice = (self.env.vol[slice_ind, ...] * 255).astype(np.uint8)
+            img_slice = cv.cvtColor(img_slice, cv.COLOR_GRAY2RGB)
+            seg_slice_mask = (self.env.seg[slice_ind, ...] > 0)
+            # red
+            img_slice[seg_slice_mask, 0] = 255
+            img_slice[seg_slice_mask, 1:] = 0
+
+            # GT: red
+            for bbox_coord in self.env.bbox_coord:
+                # (x_min, y_min, z_min, x_size, y_size, z_size)
+                bbox_coord_half_len = len(bbox_coord) // 2
+                bbox_start, bbox_end = start_size2start_end(bbox_coord[:bbox_coord_half_len],
+                                                            bbox_coord[bbox_coord_half_len:])
+                if bbox_start[-1] <= slice_ind <= bbox_end[-1]:
+                    # red
+                    cv.rectangle(img_slice, bbox_start[:2], bbox_end[:2], color=(255, 0, 0), thickness=2,
+                                 lineType=cv.LINE_AA)
+            # predictions: blue
+            for bbox_coord in bboxes:
+                # (x_min, y_min, z_min, x_size, y_size, z_size)
+                bbox_coord_half_len = len(bbox_coord) // 2
+                bbox_start, bbox_end = bbox_coord[:bbox_coord_half_len], bbox_coord[bbox_coord_half_len:]
+                if bbox_start[-1] <= slice_ind <= bbox_end[-1]:
+                    # blue
+                    cv.rectangle(img_slice, bbox_start[:2], bbox_end[:2], color=(0, 0, 255), thickness=2,
+                                 lineType=cv.LINE_AA)
+
+            return img_slice
+
+        num_bboxes = len(self.env.bbox_coord)
+        num_cols = 3
+        num_rows = np.ceil(num_bboxes / num_cols).astype(int)
+        fig, axes = plt.subplots(num_rows, num_cols, figsize=(10.8, 3.6 * num_rows))
+        axes_flatten = axes.flatten()
+
+        for i, bbox_coord in enumerate(self.env.bbox_coord):
+            bbox_coord_half_len = len(bbox_coord) // 2
+            bbox_center, _ = start_size2center_size(bbox_coord[:bbox_coord_half_len], bbox_coord[bbox_coord_half_len:])
+            slice_ind = bbox_center[-1]
+            img_slice = render_lesion_slice(slice_ind)
+            axis = axes_flatten[i]
+            axis.imshow(img_slice)
+            axis.set_title(f"z = {slice_ind}")
+
+        for j in range(i, axes_flatten.shape[0]):
+            fig.delaxes(axes_flatten[j])
+
+        return fig
 
     @torch.no_grad()
     def get_action(self, obs):
