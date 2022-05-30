@@ -133,6 +133,7 @@ class ViTGreedyPredictor(object):
         for j in range(i, axes_flatten.shape[0]):
             fig.delaxes(axes_flatten[j])
 
+        fig.tight_layout()
         return fig
 
     @torch.no_grad()

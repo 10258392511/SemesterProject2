@@ -31,11 +31,30 @@ pip install -e .
  </table>
 
 ### Greedy Policy
-Episodes 1 , 10 & 35
+Without Inhibition of Return (IoR); with IoR, episode 25 & 30
 <table>
   <tr>
-    <td><img src="results/vit_greedy/episode_1.gif" width=200 height=300></td>
-    <td><img src="results/vit_greedy/episode_10.gif" width=200 height=300></td>
-    <td><img src="results/vit_greedy/episode_35.gif" width=200 height=300></td>
+    <td><img src="results/vit_greedy/train_without_inhibition_of_return_ep_15.gif" width=200 height=300></td>
+    <td><img src="results/vit_greedy/train_with_inhibition_of_return_ep_25.gif" width=200 height=300></td>
+    <td><img src="results/vit_greedy/train_with_inhibition_of_return_ep_30.gif" width=200 height=300></td>
    <tr>
 </table>
+
+
+[comment]: <> (### Grid of Agents in a Test Volume)
+
+[comment]: <> (<table>)
+
+[comment]: <> (  <tr>)
+
+[comment]: <> (    <td><img src="results/vit_greedy/train_without_inhibition_of_return_ep_15.gif" width=200 height=300></td>)
+
+[comment]: <> (    <td><img src="results/vit_greedy/train_with_inhibition_of_return_ep_25.gif" width=200 height=300></td>)
+
+[comment]: <> (    <td><img src="results/vit_greedy/train_with_inhibition_of_return_ep_30.gif" width=200 height=300></td>)
+
+[comment]: <> (    <td><img src="results/vit_greedy/train_with_inhibition_of_return_ep_30.gif" width=200 height=300></td>)
+
+[comment]: <> (   <tr>)
+
+[comment]: <> (</table>)
