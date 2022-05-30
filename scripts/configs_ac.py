@@ -103,7 +103,9 @@ volumetric_env_params.update({
     "num_updates_clf": 20,
     "false_neg_weight": 1,
     "conf_score_threshold": 0.5,
-    "translation_scale": 1 / 4,
+    "conf_score_threshold_pred": 0.9,
+    "pred_zeros_threshold": 1e-2,
+    "translation_scale": 3 / 4,
     "iou_threshold": 1e-6
 })
 

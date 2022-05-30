@@ -20,9 +20,10 @@ class ViTGreedyPredictor(object):
         bash:
             param_paths: {"encoder": "*.pt", "clf_head": ..., "patch_pred_head": ...}
             video_save_dir
-            mode: "cartesion" or "explore"
+            mode_pred: "cartesion" or "explore"
             order: "zyx"...
             grid_size: (3, 3, 3), "xyz"
+            notebook
         """
         self.params = params
         self.env = VolumetricForGreedy(params)
@@ -31,16 +32,18 @@ class ViTGreedyPredictor(object):
         self.agent.load_encoder(self.params["param_paths"]["encoder"])
         self.agent.load_heads(self.params["param_paths"]["patch_pred_head"],
                               self.params["param_paths"]["clf_head"])
-        if self.params["mode"] != "explore":
+        if self.params["mode_pred"] != "explore":
             self.ordering = {"z": 0, "y": 1, "x": 2}
             self.trajectory = self.init_trajectory_()  # [(X_pos, terminal)], generator
+            step_size = np.array(self.params["init_size"]) * self.params["translation_scale"]
+            self.trajectory_len = int(np.product(self.env.vol.shape) / np.product(step_size))
         # (T, 1, 1, P, P, P), (T, 1, 2P, 2P, 2P), (T, 1, 3)
         self.obs_buffer = {
             "patches_small": None,
             "patches_large": None,
             "rel_pos": None
         }
-        if self.params["mode"] == "explore":
+        if self.params["mode_pred"] == "explore":
             self.init_pos_grid = None  # (N, 3)
             self.init_grid_()
         self.mse = nn.MSELoss()
@@ -49,11 +52,19 @@ class ViTGreedyPredictor(object):
         self.action_space = [np.array(action) for action in self.action_space if action != (0, 0, 0)]
 
     @torch.no_grad()
-    def predict(self):
+    def predict(self, **kwargs):
         """
         Returns: bboxes: (N, 6), [start, end]; conf_scores: (N,)
         """
-        pass
+        if self.params["mode_pred"] == "explore":
+            assert self.init_pos_grid is not None
+            if_video = kwargs.get("if_video", False)
+
+            return self.predict_explore_(if_video)
+
+        assert self.trajectory is not None
+        if self.params["mode_pred"] == "cartesian":
+            return self.predict_cartesian_()
 
     @torch.no_grad()
     def evaluate(self, bboxes):
@@ -244,9 +255,6 @@ class ViTGreedyPredictor(object):
 
         return False
 
-    def compute_trajectory(self):
-        pass
-
     def nms_(self, bboxes, scores):
         # time complexity: O(n)
         indices = np.argsort(scores, axis=-1)
@@ -265,6 +273,8 @@ class ViTGreedyPredictor(object):
             selected_bboxes.append(bbox_iter)
             selected_scores.append(scores[i])
             for j in range(i + 1, scores.shape[0]):
+                if visited[j]:
+                    continue
                 bbox_other_iter = bboxes[j, ...]
                 iou_score = self.iou_(bbox_iter, bbox_other_iter)
                 if iou_score > self.params["iou_threshold"]:
@@ -293,7 +303,51 @@ class ViTGreedyPredictor(object):
         return intersec_area / union_area
 
     def predict_cartesian_(self):
-        pass
+        bboxes, scores = [], []
+        X_size = np.array(self.params["init_size"])
+        if self.params["notebook"]:
+            from tqdm.notebook import tqdm
+        else:
+            from tqdm import tqdm
+        pbar = tqdm(self.trajectory, total=self.trajectory_len, desc="testing: cartesian")
+        for X_pos, terminal in pbar:
+            if not self.env.is_in_vol_(X_pos, 2 * X_size):
+                self.clear_buffer_()
+                continue
+            X_pos_orig = X_pos.copy()
+            X_patch_small = self.env.get_patch_by_center_size(X_pos, X_size)
+            if np.all(np.abs(X_patch_small) < self.params["pred_zeros_threshold"]):
+                # print(f"zero region: {X_pos}")
+                self.clear_buffer_()
+                continue
+            X_patch_large = self.env.get_patch_by_center_size(X_pos, 2 * X_size)
+            self.add_to_buffer_(X_patch_small, X_patch_large, X_pos)
+
+            X_small = self.obs_buffer["patches_small"]
+            X_large = self.obs_buffer["patches_large"]
+            X_pos = self.obs_buffer["rel_pos"]
+            X_small = ptu.from_numpy(X_small) * 2 - 1  # (T, 1, 1, P, P, P)
+            X_large = ptu.from_numpy(X_large) * 2 - 1  # (T, 1, 1, 2P, 2P, 2P)
+            X_pos = ptu.from_numpy(X_pos)  # (T, 1, 3)
+            X_enc = self.agent.encoder(X_small, X_large, X_pos, X_pos[-1:, ...])  # (1, N_emb)
+            X_clf_pred = self.agent.clf_head(X_enc)  # (1, 2)
+            X_clf_pred = torch.softmax(X_clf_pred, dim=-1)
+            score_pred = X_clf_pred[0, 1].item()
+            if score_pred > self.params["conf_score_threshold_pred"]:
+                start, end = center_size2start_end(X_pos_orig, X_size)
+                bboxes.append(np.concatenate([start, end], axis=-1))
+                scores.append(score_pred)
+
+                ### debug only ###
+                # print(f"current pos: {X_pos_orig}, score: {score_pred}")
+                # pbar.set_description(f"current pos: {X_pos_orig}, score: {score_pred}")
+                ### end of debug block ###
+            pbar.set_description(f"current pos: {X_pos_orig}, score: {score_pred: .3f}")
+
+            if terminal:
+                self.clear_buffer_()
+
+        return np.array(bboxes), np.array(scores)
 
     def predict_explore_(self, if_video=False):
         video_path = None
@@ -329,7 +383,7 @@ class ViTGreedyPredictor(object):
             action = self.get_action((X_small, X_large, X_pos, X_size))
             (X_small, X_large, X_pos, X_size), _, done, _ = self.env.step(action)
             conf_score = self.classify_()
-            if conf_score > self.params["conf_score_threshold"]:
+            if conf_score > self.params["conf_score_threshold_pred"]:
                 start, end = center_size2start_end(X_pos, X_size)
                 bboxes.append(np.concatenate([start, end], axis=0))
                 scores.append(conf_score)
