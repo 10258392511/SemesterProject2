@@ -44,16 +44,16 @@ Without Inhibition of Return (IoR); with IoR, episode 25 & 30
 ### Grid of Agents in a Test Volume
 <table>
   <tr>
-    <td><img src="results/vit_greedy/test1/agent0.gif" width=200 height=300></td>
-    <td><img src="results/vit_greedy/test1/agent1.gif" width=200 height=300></td>
-    <td><img src="results/vit_greedy/test1/agent2.gif" width=200 height=300></td>
-    <td><img src="results/vit_greedy/test1/agent3.gif" width=200 height=300></td>
+    <td><img src="results/vit_greedy/test_1/agent_0.gif" width=200 height=300></td>
+    <td><img src="results/vit_greedy/test_1/agent_1.gif" width=200 height=300></td>
+    <td><img src="results/vit_greedy/test_1/agent_2.gif" width=200 height=300></td>
+    <td><img src="results/vit_greedy/test_1/agent_3.gif" width=200 height=300></td>
   <tr>
   
   <tr>
-    <td><img src="results/vit_greedy/test1/agent4.gif" width=200 height=300></td>
-    <td><img src="results/vit_greedy/test1/agent5.gif" width=200 height=300></td>
-    <td><img src="results/vit_greedy/test1/agent6.gif" width=200 height=300></td>
-    <td><img src="results/vit_greedy/test1/agent7.gif" width=200 height=300></td>
+    <td><img src="results/vit_greedy/test_1/agent_4.gif" width=200 height=300></td>
+    <td><img src="results/vit_greedy/test_1/agent_5.gif" width=200 height=300></td>
+    <td><img src="results/vit_greedy/test_1/agent_6.gif" width=200 height=300></td>
+    <td><img src="results/vit_greedy/test_1/agent_7.gif" width=200 height=300></td>
   <tr>
 </table>
