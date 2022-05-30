@@ -41,7 +41,7 @@ Without Inhibition of Return (IoR); with IoR, episode 25 & 30
 </table>
 
 
-### Grid of Agents in a Test Volume
+### Grid of Agents in a Test Volume (2-by-2-by-2)
 <table>
   <tr>
     <td><img src="results/vit_greedy/test_1/agent_0.gif" width=200 height=300></td>
