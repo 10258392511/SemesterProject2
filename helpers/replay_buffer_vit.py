@@ -308,7 +308,6 @@ class ReplayBufferGreedy(object):
             self.buffer["has_lesion"] = np.concatenate([self.buffer["has_lesion"][-self.params["replay_buffer_size"]:, ...],
                                                        has_lesion], axis=0)
 
-
     def sample(self, batch_size):
         """
         Returns a list of transitions.

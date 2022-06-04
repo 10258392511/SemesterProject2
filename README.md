@@ -31,7 +31,7 @@ pip install -e .
  </table>
 
 ### Greedy Policy
-Without Inhibition of Return (IoR); with IoR, episode 25 & 30
+Without Inhibition of Return (IoR); with IoR, episodes 25 & 30
 <table>
   <tr>
     <td><img src="results/vit_greedy/train_without_inhibition_of_return_ep_15.gif" width=200 height=300></td>

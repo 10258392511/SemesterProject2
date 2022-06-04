@@ -35,7 +35,7 @@ spatial_transform_args = {
     "sigma_range": (5, 7),
     "magnitude_range": (0.3, 0.9),
     "prob": 0.5,
-    "rotate_range": np.deg2rad([15, 15, 15]),
+    "rotate_range": np.deg2rad([5, 5, 5]),
     "translate_range": (10, 10, 10),
     "padding_mode": "zeros"
 }

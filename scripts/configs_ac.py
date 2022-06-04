@@ -93,7 +93,7 @@ volumetric_env_params.update({
     "lam_cls": 1,
     "replay_buffer_size": 1000,
     "l2_tao": 200,
-    "num_steps_to_memorize": 10,
+    "num_steps_to_memorize": 5,
     "max_num_videos": 1,
     "max_video_len": 30,
     "batch_size": 128,
@@ -106,7 +106,8 @@ volumetric_env_params.update({
     "conf_score_threshold_pred": 0.9,
     "pred_zeros_threshold": 1e-2,
     "translation_scale": 3 / 4,
-    "iou_threshold": 1e-6
+    "iou_threshold": 1e-6,
+    "init_perturb_std_ratio": 2  # e.g: 2 * 16
 })
 
 volumetric_sampling_policy_args = {
