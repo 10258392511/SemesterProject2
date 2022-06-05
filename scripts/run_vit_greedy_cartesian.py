@@ -24,7 +24,7 @@ if __name__ == '__main__':
     parser.add_argument("--if_clip_grad", type=float, default=None)
     parser.add_argument("--grid_size", type=int, default=3)
     args = parser.parse_args()
-    trainer_params = vars(args)
+    trainer_params = vars(args).copy()
 
     time_stamp = dt.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
     trainer_params.update({
@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
     log_params = {
         "num_updates": trainer_params["num_updates"],
-        "if_clip_grad": trainer_params["if_clip_grad"],
+        "if_clip_grad": args.if_clip_grad,
         "grid_size": trainer_params["grid_size"][0]
     }
 
@@ -61,6 +61,7 @@ if __name__ == '__main__':
     trainer_params.update({
         "grid_size": tuple([trainer_params["grid_size"] for _ in range(3)])
     })
+    trainer_params["if_clip_grad"] = args.if_clip_grad
 
     ### VM only ###
     orig_stdout = sys.stdout

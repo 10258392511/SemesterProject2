@@ -35,7 +35,7 @@ class Volumetric(Env):
         self.dice_score_small, self.dice_score_large = 0, 0
         self.cv_window_name = f"VolumetricEnv{self.params['mode']}"
         self.sample_index = None
-        self.index = self.params["index"]
+        self.index = self.params.get("index", None)
 
     def close(self):
         # close .cv_window

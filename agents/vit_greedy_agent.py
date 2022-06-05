@@ -136,7 +136,7 @@ class ViTGreedyAgent(BaseAgent):
         # self.clf_head_opt.zero_grad()
         for i, transition in enumerate(transitions):
             # print(f"{i + 1}/{len(transitions)}")
-            for _ in range(self.params["num_updates_clf"]):
+            for i in range(self.params["num_updates_clf"]):
                 X_small, X_large, X_pos, X_small_next, X_large_next, X_pos_next, has_lesion = transition
                 # print(f"has_lesion: {has_lesion}")
                 X_small = torch.cat([X_small, X_small_next], dim=0)
@@ -147,6 +147,14 @@ class ViTGreedyAgent(BaseAgent):
                 weight = 1 if not has_lesion else self.params["false_neg_weight"]
                 # print(f"has_lesion: {has_lesion}, weight: {weight}")
                 loss = self.ce(X_clf_pred, has_lesion.unsqueeze(0)) * weight
+
+                if i == 0:
+                    with torch.no_grad():
+                        log_dict["clf_loss"] = loss.item()
+                        X_clf_pred_np = ptu.to_numpy(torch.softmax(X_clf_pred, dim=1))
+                        y_pred.append((X_clf_pred_np[0, 1] > self.params["conf_score_threshold"]).astype(int))
+                        y_true.append(ptu.to_numpy(has_lesion))
+
                 # has_lesion = has_lesion.float()
                 # loss = self.mse(X_clf_pred, torch.stack([1- has_lesion, has_lesion], dim=0))
                 self.encoder_opt.zero_grad()
@@ -159,13 +167,14 @@ class ViTGreedyAgent(BaseAgent):
                                               self.params["clf_head_opt_args"]["clip_grad_val"])
                 self.encoder_opt.step()
                 self.clf_head_opt.step()
-                print(f"updating, y_true: {has_lesion.item()}")
-                print(f"updating, y_pred: {ptu.to_numpy(torch.softmax(X_clf_pred, dim=-1))}")
+                with torch.no_grad():
+                    print(f"updating, y_true: {has_lesion.item()}")
+                    print(f"updating, y_pred: {ptu.to_numpy(torch.softmax(X_clf_pred, dim=-1))}")
 
-            X_clf_pred = torch.softmax(X_clf_pred, dim=-1).detach()
-            y_pred.append(ptu.to_numpy(X_clf_pred[0, 1] > self.params["conf_score_threshold"]).astype(int))
-            y_true.append(ptu.to_numpy(has_lesion))
-            log_dict["clf_loss"] = loss.item()
+            # X_clf_pred = torch.softmax(X_clf_pred, dim=-1).detach()
+            # y_pred.append(ptu.to_numpy(X_clf_pred[0, 1] > self.params["conf_score_threshold"]).astype(int))
+            # y_true.append(ptu.to_numpy(has_lesion))
+            # log_dict["clf_loss"] = loss.item()
 
         # for i, transition in enumerate(transitions):
         #     # print(f"{i + 1}/{len(transitions)}")
@@ -189,6 +198,7 @@ class ViTGreedyAgent(BaseAgent):
         # self.encoder_opt.step()
         # self.clf_head_opt.step()
         # log_dict["clf_acc"] = acc / len(transitions)
+
         y_true = np.array(y_true)
         y_pred = np.array(y_pred)
         print(f"y_true: {y_true}")

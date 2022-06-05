@@ -38,7 +38,7 @@ class DeterministicPathSampler(object):
         xx = np.clip((xx[:-1] + W / grid_w / 2).astype(int), 0, W - 1)
         yy = np.clip((yy[:-1] + H / grid_h / 2).astype(int), 0, H - 1)
         zz = np.clip((zz[:-1] + D / grid_d / 2).astype(int), 0, D - 1)
-        self.init_pos_grid = cycle(np.array(list(product(xx, yy, zz))))
+        self.init_pos_grid = list(product(xx, yy, zz))
 
     def sample(self):
         """
@@ -129,7 +129,8 @@ class DeterministicPathSampler(object):
         Returns: X_small, X_large, X_pos, X_next_small, X_next_large, X_next_pos, X_clf
         (T, N, 1, P, P, P), (T, N, 1, 2P, 2P, 2P), (T, N, 3), (1, N, 1, P, P, P), (1, N, 1, 2P, 2P, 2P), (1, N, 3), (N,)
         """
-        anchor_center = next(self.init_pos_grid)  # xyz
+        anchor_center = np.array(random.choice(self.init_pos_grid))  # xyz
+        print(f"anchor center for normal regions: {anchor_center}")
         center = anchor_center + np.random.randn(*anchor_center.shape) * self.params["init_perturb_std_ratio"] * self.size
         center = center.astype(int)  # xyz
         center = center[::-1]  # zyx

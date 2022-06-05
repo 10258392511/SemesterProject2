@@ -2,7 +2,7 @@ import numpy as np
 import os
 
 
-# # modify the paths
+# modify the paths
 # temp_save_dir = r"D:\testings\Python\TestingPython\SemesterProject2\data\temp"
 # hdf5_filename = r"G:\Legion\Research\Biomedical Imaging\Semester Project 2\dataset\dataset.hdf5"
 # data_root = r"D:\testings\Python\TestingPython\SemesterProject2\data\project"

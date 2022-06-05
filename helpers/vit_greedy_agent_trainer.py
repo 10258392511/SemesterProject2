@@ -7,6 +7,7 @@ import SemesterProject2.helpers.pytorch_utils as ptu
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
 from sklearn.metrics import precision_score, recall_score, f1_score
+from itertools import product, cycle
 from SemesterProject2.envs.volumetric import VolumetricForGreedy
 from SemesterProject2.helpers.replay_buffer_vit import ReplayBufferGreedy
 from SemesterProject2.agents.policies.sampling_policy_greedy import FixedSizeSampingPolicy
@@ -20,7 +21,7 @@ class ViTGreedyAgentTrainer(object):
         """
         params:
         bash:
-            num_episodes, batch_size, print_interval, log_dir, model_save_dir, if_clip_grad, if_notebook
+            num_episodes, batch_size, print_interval, grid_size, log_dir, model_save_dir, if_clip_grad, if_notebook
             log_dir: run/volumetric_greedy/timestamp, model_dir: params/volumetric_greedy/timestamp(/*.pt...)
         """
         self.params = params
@@ -31,11 +32,25 @@ class ViTGreedyAgentTrainer(object):
         self.encoder_scheduler = ReduceLROnPlateau(self.agent.encoder_opt, factor=0.9, patience=100)
         self.patch_pred_scheduler = ReduceLROnPlateau(self.agent.patch_pred_head_opt, factor=0.9, patience=100)
         self.clf_scheduler = ReduceLROnPlateau(self.agent.clf_head_opt, factor=0.9, patience=100)
+        # to initialize after env.reset()
+        self.init_pos_grid = None  # xyz
+        self.vol_shape = None
 
         # for pre-training
         self.writer = SummaryWriter(self.params["log_dir"])
         self.global_train_steps = 0
         self.global_steps = 0
+
+    def init_grid_(self):
+        grid_w, grid_h, grid_d = self.params["grid_size"]
+        D, H, W = self.vol_shape
+        xx = np.linspace(0, W - 1, grid_w + 1)
+        yy = np.linspace(0, H - 1, grid_h + 1)
+        zz = np.linspace(0, D - 1, grid_d + 1)
+        xx = np.clip((xx[:-1] + W / grid_w / 2).astype(int), 0, W - 1)
+        yy = np.clip((yy[:-1] + H / grid_h / 2).astype(int), 0, H - 1)
+        zz = np.clip((zz[:-1] + D / grid_d / 2).astype(int), 0, D - 1)
+        self.init_pos_grid = list(product(xx, yy, zz))
 
     def train_(self, **kwargs):
         self.agent.encoder.train()
@@ -45,6 +60,9 @@ class ViTGreedyAgentTrainer(object):
         if_record_video = kwargs.get("if_record_video", False)
         print("Collecting training transitions...")
         X_small, X_large, X_pos, X_size = self.agent.env.reset()
+        self.vol_shape = self.agent.env.vol.shape
+        self.init_grid_()
+
         log_dict = {}
         manual_choice = random.choice([False, True])
         if manual_choice:
@@ -52,8 +70,14 @@ class ViTGreedyAgentTrainer(object):
             bbox_coord_half_len = len(bbox_coord) // 2
             start, size = bbox_coord[:bbox_coord_half_len], bbox_coord[bbox_coord_half_len:]
             bbox_center, _ = start_size2center_size(start, size)
-            self.agent.env.center = (bbox_center + np.random.randn(*X_size.shape) * X_size / 4).astype(int)
+            self.agent.env.center = (bbox_center + np.random.randn(*X_size.shape) * X_size).astype(int)
             # self.agent.env.center = bbox_center
+        else:
+            anchor_center = np.array(random.choice(self.init_pos_grid))  # xyz
+            print(f"anchor center for normal regions: {anchor_center}")
+            center = anchor_center + np.random.randn(*anchor_center.shape) * X_size
+            center = center.astype(int)  # xyz
+            self.agent.env.center = center
         (X_small, X_large, X_pos, X_size), _, _, _ = self.agent.env.step((self.agent.env.center, self.agent.env.size))
 
         if if_record_video:
@@ -69,7 +93,7 @@ class ViTGreedyAgentTrainer(object):
             self.agent.add_to_replay_buffer(X_small, X_large, X_pos, done, info)
             if self.agent.can_sample(self.params["batch_size"]):
                 transitions = self.agent.sample(self.params["batch_size"])
-                print(f"transitions: {[transition[-1] for transition in transitions]}")
+                print(f"transitions: {[transition[-1] for transition in transitions]}")  # has_lesion
                 log_dict = self.agent.train(transitions)
 
                 for key, val in log_dict.items():
@@ -98,6 +122,8 @@ class ViTGreedyAgentTrainer(object):
         print("Collecting eval transitions...")
         for manual_choice in [False, True]:
             X_small, X_large, X_pos, X_size = self.eval_env.reset()
+            self.vol_shape = self.eval_env.vol.shape
+            self.init_grid_()
             if manual_choice:
                 bbox_coord = random.choice(self.eval_env.bbox_coord)
                 bbox_coord_half_len = len(bbox_coord) // 2
@@ -105,6 +131,12 @@ class ViTGreedyAgentTrainer(object):
                 bbox_center, _ = start_size2center_size(start, size)
                 # self.eval_env.center = (bbox_center + np.random.randn(*X_size.shape) * X_size).astype(int)
                 self.eval_env.center = bbox_center
+            else:
+                anchor_center = np.array(random.choice(self.init_pos_grid))  # xyz
+                print(f"anchor center for normal regions: {anchor_center}")
+                center = anchor_center + np.random.randn(*anchor_center.shape) * X_size
+                center = center.astype(int)  # xyz
+                self.eval_env.center = center
             (X_small, X_large, X_pos, X_size), _, _, _ = self.eval_env.step((self.eval_env.center, self.eval_env.size))
             while True:
                 act = self.eval_policy.get_action((X_small, X_large, X_pos, X_size))
