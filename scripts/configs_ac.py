@@ -100,7 +100,7 @@ volumetric_env_params.update({
     "if_clip_grad": True,
     "num_updates_patch_pred": 30,
     "num_updates_patch_pred_target": 3,
-    "num_updates_clf": 15,
+    "num_updates_clf": 10,
     "false_neg_weight": 1,
     "conf_score_threshold": 0.5,
     "conf_score_threshold_pred": 0.9,

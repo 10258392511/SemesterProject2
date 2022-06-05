@@ -38,6 +38,10 @@ class ViTGreedyAgentTrainer(object):
         self.global_steps = 0
 
     def train_(self, **kwargs):
+        self.agent.encoder.train()
+        self.agent.patch_pred_head.train()
+        self.agent.clf_head.train()
+
         if_record_video = kwargs.get("if_record_video", False)
         print("Collecting training transitions...")
         X_small, X_large, X_pos, X_size = self.agent.env.reset()
@@ -87,6 +91,10 @@ class ViTGreedyAgentTrainer(object):
         """
         Sample two trajectories: random start and start from a lesion region.
         """
+        self.agent.encoder.eval()
+        self.agent.patch_pred_head.eval()
+        self.agent.clf_head.eval()
+
         print("Collecting eval transitions...")
         for manual_choice in [False, True]:
             X_small, X_large, X_pos, X_size = self.eval_env.reset()
@@ -148,6 +156,7 @@ class ViTGreedyAgentTrainer(object):
             if_print = (i % self.params["print_interval"] == 0)
             train_log_dict = self.train_(**kwargs)
             eval_log_dict = self.eval_(**kwargs)
+            # TODO: consider scheduler
             log_dict.update(train_log_dict)
             log_dict.update(eval_log_dict)
 

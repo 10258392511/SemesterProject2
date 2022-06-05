@@ -44,7 +44,7 @@ clf_head_params.update({
 base_opt_args = {
     "class": SGD,
     "args": {
-        "lr": 1e-4
+        "lr": 1e-3
     },
     "clip_grad_val": 1
 }
@@ -60,6 +60,6 @@ actor_head_opt_args = base_opt_args.copy()
 clf_head_opt_args = base_opt_args.copy()
 clf_head_opt_args.update({
 "args": {
-        "lr": 1e-4
+        "lr": 1e-3
     }
 })

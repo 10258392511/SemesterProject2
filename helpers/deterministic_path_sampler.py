@@ -50,11 +50,22 @@ class DeterministicPathSampler(object):
         self.init_grid_()
         path_len = np.random.randint(self.params["num_steps_to_memorize"] + 1)
         samples = []
-        samples.append(self.sample_lesion_region_(path_len))
-        samples.append(self.sample_lesion_region_(path_len))
-        samples.append(self.sample_lesion_region_normal_(path_len))
-        samples.append(self.sample_normal_(path_len))
-
+        try:
+            samples.append(self.sample_lesion_region_(path_len))
+        except Exception as e:
+            print(e)
+        try:
+            samples.append(self.sample_lesion_region_(path_len))
+        except Exception as e:
+            print(e)
+        try:
+            samples.append(self.sample_lesion_region_normal_(path_len))
+        except Exception as e:
+            print(e)
+        try:
+            samples.append(self.sample_normal_(path_len))
+        except Exception as e:
+            print(e)
         # TODO: consider make it a large batch
         return samples
 
@@ -99,7 +110,7 @@ class DeterministicPathSampler(object):
             sign = self.sign2float[mode[1]]
             has_lesion = True
             while has_lesion:
-                current_pos[dim] += (self.step_size[dim] * sign).astype(int)
+                current_pos[dim] += -(self.step_size[dim] * sign).astype(int)
                 has_lesion = (self.seg[tuple(current_pos)] == 1)
             items_iter = self.sample_one_path_(current_pos, path_len, mode, has_lesion)
             for i in range(len(items)):

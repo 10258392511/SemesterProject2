@@ -19,7 +19,7 @@ eval "$(conda shell.bash hook)"
 conda activate RL
 cd ../SemesterProject2
 
-python ./scripts/run_vit_pre_train.py --num_pre_train_updates {hyper_param_dict["num_pre_train_updates"]} --pre_train_batch_size {hyper_param_dict["pre_train_batch_size"]}"""
+python scripts/run_vit_greedy_cartesian.py --num_updates {hyper_param_dict["num_updates"]} --if_clip_grad {hyper_param_dict["if_clip_grad"]} --grid_size {hyper_param_dict["grid_size"]}"""
 
     return bash_script
 
@@ -36,15 +36,13 @@ def create_filename(hyper_param_dict: dict):
 
 if __name__ == '__main__':
     """
-    python ./generate_run_vit_pre_train.py --set_num 1
+    python ./generate_run_vit_greedy_cartesian.py --set_num 1
     """
     hyper_params = dict()
     # set 1
     hyper_params[1] = [
-            {"num_pre_train_updates": 300, "pre_train_batch_size": 16},
-            {"num_pre_train_updates": 300, "pre_train_batch_size": 32},
-            {"num_pre_train_updates": 300, "pre_train_batch_size": 64},
-            {"num_pre_train_updates": 300, "pre_train_batch_size": 128}
+            {"num_updates": 10000, "if_clip_grad": 0.1, "grid_size": 3},
+            {"num_updates": 10000, "if_clip_grad": 0.1, "grid_size": 4}
     ]
 
     parser = argparse.ArgumentParser()
