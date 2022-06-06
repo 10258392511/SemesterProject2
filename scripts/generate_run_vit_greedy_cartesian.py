@@ -41,8 +41,8 @@ if __name__ == '__main__':
     hyper_params = dict()
     # set 1
     hyper_params[1] = [
-            {"num_updates": 10000, "if_clip_grad": 1, "grid_size": 3},
-            {"num_updates": 10000, "if_clip_grad": 1, "grid_size": 4}
+            {"num_updates": 5000, "if_clip_grad": 1, "grid_size": 4},
+            {"num_updates": 5000, "if_clip_grad": 1, "grid_size": 5}
     ]
 
     parser = argparse.ArgumentParser()
