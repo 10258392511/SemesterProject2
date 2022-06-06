@@ -19,7 +19,7 @@ eval "$(conda shell.bash hook)"
 conda activate RL
 cd ../SemesterProject2
 
-python scripts/run_vit_greedy_exploration_trainer.py --num_episodes {hyper_param_dict["num_episodes"]} --batch_size {hyper_param_dict["batch_size"]} --grid_size {hyper_param_dict["grid_size"]}"""
+python scripts/run_greedy_exploration_trainer.py --num_episodes {hyper_param_dict["num_episodes"]} --batch_size {hyper_param_dict["batch_size"]} --grid_size {hyper_param_dict["grid_size"]}"""
 
     return bash_script
 
@@ -41,8 +41,8 @@ if __name__ == '__main__':
     hyper_params = dict()
     # set 1
     hyper_params[1] = [
-            {"num_episodes": 1000, "batch_size": 6, "grid_size": 4},
-            {"num_episodes": 1000, "batch_size": 6, "grid_size": 5}
+            {"num_episodes": 1000, "batch_size": 2, "grid_size": 4},
+            {"num_episodes": 1000, "batch_size": 2, "grid_size": 5}
     ]
 
     parser = argparse.ArgumentParser()
