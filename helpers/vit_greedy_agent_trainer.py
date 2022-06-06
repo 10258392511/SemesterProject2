@@ -86,7 +86,7 @@ class ViTGreedyAgentTrainer(object):
             act = self.agent.get_action((X_small, X_large, X_pos, X_size))
             (X_small, X_large, X_pos, X_size), _, done, info = self.agent.env.step(act)
             # TODO: comment out
-            self.agent.env.render()
+            # self.agent.env.render()
             if if_record_video:
                 train_img_clips.append(self.agent.env.render("rgb_array"))
 
@@ -142,7 +142,7 @@ class ViTGreedyAgentTrainer(object):
                 act = self.eval_policy.get_action((X_small, X_large, X_pos, X_size))
                 (X_small, X_large, X_pos, X_size), _, done, info = self.eval_env.step(act)
                 # TODO: comment out
-                self.eval_env.render()
+                # self.eval_env.render()
                 self.eval_replay_buffer.add_to_buffer(X_small, X_large, X_pos, done, info)
                 if done:
                     break
@@ -249,7 +249,7 @@ class ViTGreedyAgentTrainer(object):
             action = self.agent.get_action((X_small, X_large, X_pos, X_size))
             (X_small, X_large, X_pos, X_size), _, done, _ = self.eval_env.step(action)
             # TODO: comment out
-            self.eval_env.render()
+            # self.eval_env.render()
             img_clips.append(self.eval_env.render("rgb_array"))
             if num_steps == max_ep_len:
                 done = True

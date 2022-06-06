@@ -56,7 +56,11 @@ class DeterministicPathSampler(object):
             print(e)
 
         num_lesion_normal_paths = 0
+        num_trials = 0
         while num_lesion_normal_paths == 0:
+            num_trials += 1
+            if num_trials == 10:
+                break
             try:
                 samples.append(self.sample_lesion_region_normal_(path_len))
                 num_lesion_normal_paths += 1
@@ -70,7 +74,11 @@ class DeterministicPathSampler(object):
             print(e)
 
         num_normal_paths = 0
+        num_trials = 0
         while num_normal_paths == 0:
+            num_trials += 1
+            if num_trials == 10:
+                break
             try:
                 samples.append(self.sample_normal_(path_len))
                 num_normal_paths += 1
