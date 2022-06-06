@@ -130,11 +130,14 @@ class DeterministicPathSampler(object):
         (T, N, 1, P, P, P), (T, N, 1, 2P, 2P, 2P), (T, N, 3), (1, N, 1, P, P, P), (1, N, 1, 2P, 2P, 2P), (1, N, 3), (N,)
         """
         anchor_center = np.array(random.choice(self.init_pos_grid))  # xyz
-        print(f"anchor center for normal regions: {anchor_center}")
-        center = anchor_center + np.random.randn(*anchor_center.shape) * self.params["init_perturb_std_ratio"] * self.size
-        center = center.astype(int)  # xyz
-        center = center[::-1]  # zyx
-        has_lesion = (self.seg[tuple(center)] == 1)
+        has_lesion = True
+        while has_lesion:
+            center = anchor_center + np.random.randn(*anchor_center.shape) * self.params["init_perturb_std_ratio"] * self.size
+            center = center.astype(int)  # xyz
+            center = center[::-1]  # zyx
+            has_lesion = (self.seg[tuple(center)] == 1.)
+        print(f"anchor center for normal regions: {anchor_center}, has_lesion: {has_lesion}, seg: {self.seg[tuple(center)]}")
+
         # X_small, X_large, X_pos, X_next_small, X_next_large, X_next_pos, X_clf = [], [], [], [], [], [], []
         items = [[] for _ in range(7)]
         for mode in ("x+", "x-", "y+", "y-", "z+", "z-"):
