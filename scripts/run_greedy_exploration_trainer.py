@@ -1,7 +1,7 @@
 import sys
 
-path = "D:\\testings\\Python\\TestingPython"
-# path = "/home/zhexwu/Researches/biomedical_imaging"
+# path = "D:\\testings\\Python\\TestingPython"
+path = "/home/zhexwu/Researches/biomedical_imaging"
 if path not in sys.path:
     sys.path.append(path)
 
@@ -70,7 +70,8 @@ if __name__ == '__main__':
     log_dir_params = {
         "if_clip_grad": vit_trainer_args["if_clip_grad"],
         "num_episodes": vit_trainer_args["num_episodes"],
-        "batch_size": vit_trainer_args["batch_size"]
+        "batch_size": vit_trainer_args["batch_size"],
+        "grid_size": vit_trainer_args["grid_size"][0]
     }
     log_dir_name = create_log_dir_name(time_stamp, log_dir_params)
     vit_trainer_args.update({
@@ -79,14 +80,14 @@ if __name__ == '__main__':
     })
     # pprint(vit_trainer_args)
 
-    # ### VM only ###
-    # orig_stdout = sys.stdout
-    # orig_stderr = sys.stderr
-    # log_file = open(f"/home/zhexwu/Researches/biomedical_imaging/submission/lesion_detection_log/{log_dir_name}.txt",
-    #                 "w")
-    # sys.stdout = log_file
-    # sys.stderr = log_file
-    # ### end of VM only block ###
+    ### VM only ###
+    orig_stdout = sys.stdout
+    orig_stderr = sys.stderr
+    log_file = open(f"/home/zhexwu/Researches/biomedical_imaging/submission/lesion_detection_log/{log_dir_name}.txt",
+                    "w")
+    sys.stdout = log_file
+    sys.stderr = log_file
+    ### end of VM only block ###
 
     trainer = ViTGreedyAgentTrainer(vit_trainer_args, vit_greedy_agent, test_env)
     trainer.train(if_record_video=True)
