@@ -77,7 +77,7 @@ class ViTGreedyAgentTrainer(object):
             print(f"anchor center for normal regions: {anchor_center}")
             center = anchor_center + np.random.randn(*anchor_center.shape) * X_size
             center = center.astype(int)  # xyz
-            while not self.agent.env.is_in_vol_(center, X_size):
+            while not self.agent.env.is_in_vol_(center, 2 * X_size):
                 center = anchor_center + np.random.randn(*anchor_center.shape) * X_size
                 center = center.astype(int)  # xyz
             self.agent.env.center = center
@@ -139,7 +139,7 @@ class ViTGreedyAgentTrainer(object):
                 print(f"anchor center for normal regions: {anchor_center}")
                 center = anchor_center + np.random.randn(*anchor_center.shape) * X_size
                 center = center.astype(int)  # xyz
-                while not self.eval_env.is_in_vol_(center, X_size):
+                while not self.eval_env.is_in_vol_(center, 2 * X_size):
                     center = anchor_center + np.random.randn(*anchor_center.shape) * X_size
                     center = center.astype(int)  # xyz
                 self.eval_env.center = center
