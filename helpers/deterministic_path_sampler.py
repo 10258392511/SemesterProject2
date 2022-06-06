@@ -48,24 +48,32 @@ class DeterministicPathSampler(object):
         ind = np.random.randint(len(self.vol_ds))
         self.vol, self.seg, self.bboxes = self.vol_ds[ind]
         self.init_grid_()
-        path_len = np.random.randint(self.params["num_steps_to_memorize"] + 1)
+        path_len = np.random.randint(1, self.params["num_steps_to_memorize"] + 1)
         samples = []
         try:
             samples.append(self.sample_lesion_region_(path_len))
         except Exception as e:
             print(e)
         try:
+            num_lesion_normal_paths = 0
+            while num_lesion_normal_paths == 0:
+                samples.append(self.sample_lesion_region_normal_(path_len))
+                num_lesion_normal_paths += 1
+        except Exception as e:
+            print(e)
+        num_normal_paths = 0
+
+        try:
             samples.append(self.sample_lesion_region_(path_len))
         except Exception as e:
             print(e)
-        try:
-            samples.append(self.sample_lesion_region_normal_(path_len))
-        except Exception as e:
-            print(e)
-        try:
-            samples.append(self.sample_normal_(path_len))
-        except Exception as e:
-            print(e)
+
+        while num_normal_paths == 0:
+            try:
+                samples.append(self.sample_normal_(path_len))
+                num_normal_paths += 1
+            except Exception as e:
+                print(e)
         # TODO: consider make it a large batch
         return samples
 
@@ -111,7 +119,9 @@ class DeterministicPathSampler(object):
             has_lesion = True
             while has_lesion:
                 current_pos[dim] += -(self.step_size[dim] * sign).astype(int)
-                has_lesion = (self.seg[tuple(current_pos)] == 1)
+                has_lesion = (self.seg[tuple(current_pos)] == 1.)
+
+            current_pos[dim] += -(self.step_size[dim] * sign).astype(int)  # an extra step to guarantee outside if lesion region
             items_iter = self.sample_one_path_(current_pos, path_len, mode, has_lesion)
             for i in range(len(items)):
                 items[i].append(items_iter[i])
