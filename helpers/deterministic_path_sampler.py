@@ -54,20 +54,22 @@ class DeterministicPathSampler(object):
             samples.append(self.sample_lesion_region_(path_len))
         except Exception as e:
             print(e)
-        try:
-            num_lesion_normal_paths = 0
-            while num_lesion_normal_paths == 0:
+
+        num_lesion_normal_paths = 0
+        while num_lesion_normal_paths == 0:
+            try:
                 samples.append(self.sample_lesion_region_normal_(path_len))
                 num_lesion_normal_paths += 1
-        except Exception as e:
-            print(e)
-        num_normal_paths = 0
+            except Exception as e:
+                # raise Exception
+                print(e)
 
         try:
             samples.append(self.sample_lesion_region_(path_len))
         except Exception as e:
             print(e)
 
+        num_normal_paths = 0
         while num_normal_paths == 0:
             try:
                 samples.append(self.sample_normal_(path_len))
@@ -158,6 +160,7 @@ class DeterministicPathSampler(object):
                 items[i].append(items_iter[i])
 
         for i in range(len(items)):
+            # print(f"current index: {i}")
             if i == len(items) - 1:
                 items[i] = np.array(items[i])  # list[bool] -> (N,)
             else:
@@ -173,7 +176,16 @@ class DeterministicPathSampler(object):
         """
         assert mode in ("x+", "x-", "y+", "y-", "z+", "z-")
         if not self.is_in_vol_(end_pos[::-1], 2 * self.size):
-            return None, None, None, None, None, None
+            X_clf = False
+            X_small = np.zeros((path_len, 1, 1, *self.size))
+            X_large = np.zeros((path_len, 1, 1, *(2 * self.size)))
+            X_pos = np.ones((path_len, 1, 3)) * (-1)
+            X_next_small = np.zeros((1, 1, 1, *self.size))
+            X_next_large = np.zeros((1, 1, 1, *(2 * self.size)))
+            X_next_pos = np.zeros((1, 1, 3)) * (-1)
+
+            return X_small, X_large, X_pos, X_next_small, X_next_large, X_next_pos, X_clf
+
         X_clf = has_lesion
         X_small, X_large, X_pos = [], [], []
         X_next_pos = convert_to_rel_pos(end_pos[::-1], np.array(self.vol.shape[::-1])).reshape(1, 1, -1)  # (1, 1, 3)
