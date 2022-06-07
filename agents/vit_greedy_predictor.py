@@ -130,7 +130,7 @@ class ViTGreedyPredictor(object):
             axis.imshow(img_slice)
             axis.set_title(f"z = {slice_ind}")
 
-        for j in range(i, axes_flatten.shape[0]):
+        for j in range(i + 1, axes_flatten.shape[0]):
             fig.delaxes(axes_flatten[j])
 
         fig.tight_layout()
@@ -304,7 +304,7 @@ class ViTGreedyPredictor(object):
         return intersec_area / union_area
 
     def predict_cartesian_(self):
-        bboxes, scores = [], []
+        bboxes, scores, all_scores = [], [], []
         X_size = np.array(self.params["init_size"])
         if self.params["notebook"]:
             from tqdm.notebook import tqdm
@@ -334,7 +334,9 @@ class ViTGreedyPredictor(object):
             X_clf_pred = self.agent.clf_head(X_enc)  # (1, 2)
             X_clf_pred = torch.softmax(X_clf_pred, dim=-1)
             score_pred = X_clf_pred[0, 1].item()
-            if score_pred > self.params["conf_score_threshold_pred"]:
+            all_scores.append(score_pred)
+            # if score_pred > self.params["conf_score_threshold_pred"]:
+            if score_pred > 0.85:
                 start, end = center_size2start_end(X_pos_orig, X_size)
                 bboxes.append(np.concatenate([start, end], axis=-1))
                 scores.append(score_pred)
@@ -348,7 +350,8 @@ class ViTGreedyPredictor(object):
             if terminal:
                 self.clear_buffer_()
 
-        return np.array(bboxes), np.array(scores)
+        # return np.array(bboxes), np.array(scores)
+        return np.array(bboxes), np.array(scores), np.array(all_scores)
 
     def predict_explore_(self, if_video=False):
         video_path = None

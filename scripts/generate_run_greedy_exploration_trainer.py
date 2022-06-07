@@ -19,7 +19,7 @@ eval "$(conda shell.bash hook)"
 conda activate RL
 cd ../SemesterProject2
 
-python scripts/run_greedy_exploration_trainer.py --num_episodes {hyper_param_dict["num_episodes"]} --batch_size --if_clip_grad {hyper_param_dict["batch_size"]} --grid_size {hyper_param_dict["grid_size"]}"""
+python scripts/run_greedy_exploration_trainer.py --num_episodes {hyper_param_dict["num_episodes"]} --batch_size {hyper_param_dict["batch_size"]} --if_clip_grad --grid_size {hyper_param_dict["grid_size"]}"""
 
     return bash_script
 
