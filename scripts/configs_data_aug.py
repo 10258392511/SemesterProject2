@@ -3,13 +3,13 @@ import os
 
 
 # modify the paths
-# temp_save_dir = r"D:\testings\Python\TestingPython\SemesterProject2\data\temp"
-# hdf5_filename = r"G:\Legion\Research\Biomedical Imaging\Semester Project 2\dataset\dataset.hdf5"
-# data_root = r"D:\testings\Python\TestingPython\SemesterProject2\data\project"
+temp_save_dir = r"D:\testings\Python\TestingPython\SemesterProject2\data\temp"
+hdf5_filename = r"G:\Legion\Research\Biomedical Imaging\Semester Project 2\dataset\dataset.hdf5"
+data_root = r"D:\testings\Python\TestingPython\SemesterProject2\data\project"
 
-# temp_save_dir = r"D:\testings\Python\TestingPython\SemesterProject2\data\temp"
-hdf5_filename = r"/usr/bmicnas01/data-biwi-01/bmicdatasets/Processed/metastases_project/processed_dataset/dataset.hdf5"
-data_root = r"/usr/bmicnas01/data-biwi-01/bmicdatasets/Processed/metastases_project"
+# # temp_save_dir = r"D:\testings\Python\TestingPython\SemesterProject2\data\temp"
+# hdf5_filename = r"/usr/bmicnas01/data-biwi-01/bmicdatasets/Processed/metastases_project/processed_dataset/dataset.hdf5"
+# data_root = r"/usr/bmicnas01/data-biwi-01/bmicdatasets/Processed/metastases_project"
 data_filenames = {
     "volume": os.path.join(data_root, "imgFiles.pkl"),
     "bbox": os.path.join(data_root, "boundingbox_maskFiles.pkl"),
@@ -25,8 +25,8 @@ volume_filenames = {
 }
 volume_info_keys = ("volume", "bbox", "bbox_coord", "mask")
 # {"train": dict, "test": dict, "train_pids": list, "test_pids": list}
-# data_splitted_filename = r"D:\testings\Python\TestingPython\SemesterProject2\dataset\dataset_by_pid.pkl"
-data_splitted_filename = r"/home/zhexwu/Researches/biomedical_imaging/SemesterProject2/dataset/dataset_by_pid.pkl"
+data_splitted_filename = r"D:\testings\Python\TestingPython\SemesterProject2\dataset\dataset_by_pid.pkl"
+# data_splitted_filename = r"/home/zhexwu/Researches/biomedical_imaging/SemesterProject2/dataset/dataset_by_pid.pkl"
 
 train_test_split = 0.9
 max_seed = 1000
@@ -34,7 +34,7 @@ max_seed = 1000
 spatial_transform_args = {
     "sigma_range": (5, 7),
     "magnitude_range": (0.3, 0.9),
-    "prob": 0.5,
+    "prob": 0.,
     "rotate_range": np.deg2rad([5, 5, 5]),
     "translate_range": (10, 10, 10),
     "padding_mode": "zeros"
@@ -42,8 +42,8 @@ spatial_transform_args = {
 
 intensity_transform_args = {
     "gaussian_noise": {
-        "prob": 0.5,
-        "mean": 0,
+        "prob": 0.,
+        "mean": 0.,
         "std": 0.1
     },
     "gaussian_blur": {
@@ -54,6 +54,6 @@ intensity_transform_args = {
     },
     "random_contrast": {
         "gamma": (0.5, 2),
-        "prob": 0.5
+        "prob": 0.
     }
 }

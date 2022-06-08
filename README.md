@@ -41,19 +41,36 @@ Without Inhibition of Return (IoR); with IoR, episodes 25 & 30
 </table>
 
 
-### Grid of Agents in a Test Volume (2-by-2-by-2)
+### Grid of Agents in a Test Volume
 <table>
-  <tr>
-    <td><img src="results/vit_greedy/test_1/agent_0.gif" width=200 height=300></td>
-    <td><img src="results/vit_greedy/test_1/agent_1.gif" width=200 height=300></td>
-    <td><img src="results/vit_greedy/test_1/agent_2.gif" width=200 height=300></td>
-    <td><img src="results/vit_greedy/test_1/agent_3.gif" width=200 height=300></td>
-  <tr>
+
+[comment]: <> (  <tr>)
+
+[comment]: <> (    <td><img src="results/vit_greedy/test_1/agent_0.gif" width=200 height=300></td>)
+
+[comment]: <> (    <td><img src="results/vit_greedy/test_1/agent_1.gif" width=200 height=300></td>)
+
+[comment]: <> (    <td><img src="results/vit_greedy/test_1/agent_2.gif" width=200 height=300></td>)
+
+[comment]: <> (    <td><img src="results/vit_greedy/test_1/agent_3.gif" width=200 height=300></td>)
+
+[comment]: <> (  <tr>)
   
-  <tr>
-    <td><img src="results/vit_greedy/test_1/agent_4.gif" width=200 height=300></td>
-    <td><img src="results/vit_greedy/test_1/agent_5.gif" width=200 height=300></td>
-    <td><img src="results/vit_greedy/test_1/agent_6.gif" width=200 height=300></td>
-    <td><img src="results/vit_greedy/test_1/agent_7.gif" width=200 height=300></td>
-  <tr>
+[comment]: <> (  <tr>)
+
+[comment]: <> (    <td><img src="results/vit_greedy/test_1/agent_4.gif" width=200 height=300></td>)
+
+[comment]: <> (    <td><img src="results/vit_greedy/test_1/agent_5.gif" width=200 height=300></td>)
+
+[comment]: <> (    <td><img src="results/vit_greedy/test_1/agent_6.gif" width=200 height=300></td>)
+
+[comment]: <> (    <td><img src="results/vit_greedy/test_1/agent_7.gif" width=200 height=300></td>)
+
+[comment]: <> (  <tr>)
+
+
+   <tr> 
+        <td><img src="results/vit_greedy/test_16/agent_0.gif" width="200" height=300"></td>
+        <td><img src="results/vit_greedy/test_16/agent_1.gif" width="200" height=300"></td>
+    </tr>
 </table>

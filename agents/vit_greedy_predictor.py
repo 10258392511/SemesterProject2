@@ -118,17 +118,27 @@ class ViTGreedyPredictor(object):
         num_bboxes = len(self.env.bbox_coord)
         num_cols = 3
         num_rows = np.ceil(num_bboxes / num_cols).astype(int)
+        num_rows = 100
         fig, axes = plt.subplots(num_rows, num_cols, figsize=(10.8, 3.6 * num_rows))
         axes_flatten = axes.flatten()
 
-        for i, bbox_coord in enumerate(self.env.bbox_coord):
-            bbox_coord_half_len = len(bbox_coord) // 2
-            bbox_center, _ = start_size2center_size(bbox_coord[:bbox_coord_half_len], bbox_coord[bbox_coord_half_len:])
-            slice_ind = bbox_center[-1]
-            img_slice = render_lesion_slice(slice_ind)
-            axis = axes_flatten[i]
-            axis.imshow(img_slice)
-            axis.set_title(f"z = {slice_ind}")
+        # for i, bbox_coord in enumerate(self.env.bbox_coord):
+        #     bbox_coord_half_len = len(bbox_coord) // 2
+        #     bbox_center, _ = start_size2center_size(bbox_coord[:bbox_coord_half_len], bbox_coord[bbox_coord_half_len:])
+        #     slice_ind = bbox_center[-1]
+        #     img_slice = render_lesion_slice(slice_ind)
+        #     axis = axes_flatten[i]
+        #     axis.imshow(img_slice)
+        #     axis.set_title(f"z = {slice_ind}")
+
+        i = -1
+        for bbox_coord in self.env.bbox_coord:
+            for slice_ind in range(bbox_coord[2], bbox_coord[2] + bbox_coord[5] + 1):
+                i += 1
+                img_slice = render_lesion_slice(slice_ind)
+                axis = axes_flatten[i]
+                axis.imshow(img_slice)
+                axis.set_title(f"z = {slice_ind}")
 
         for j in range(i + 1, axes_flatten.shape[0]):
             fig.delaxes(axes_flatten[j])
@@ -336,7 +346,7 @@ class ViTGreedyPredictor(object):
             score_pred = X_clf_pred[0, 1].item()
             all_scores.append(score_pred)
             # if score_pred > self.params["conf_score_threshold_pred"]:
-            if score_pred > 0.85:
+            if score_pred > 0.5:
                 start, end = center_size2start_end(X_pos_orig, X_size)
                 bboxes.append(np.concatenate([start, end], axis=-1))
                 scores.append(score_pred)
