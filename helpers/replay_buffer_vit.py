@@ -29,8 +29,8 @@ def Path(obs, image_obs, acts, rewards, next_obs, terminals, infos):
         terminals: (T,)
         infos: {key: (T,)...}
     """
-    resizer_small = Resize([configs_network.encoder_params["patch_size"]] * 3)
-    resizer_large = Resize([configs_network.encoder_params["patch_size"] * 2] * 3)
+    resizer_small = Resize([configs_network.encoder_params["patch_size"]] * 3, mode="trilinear")
+    resizer_large = Resize([configs_network.encoder_params["patch_size"] * 2] * 3, mode="trilinear")
 
     def convert_obs_to_arrays(obs: list):
         obs_small, obs_large, obs_pos, obs_size = [], [], [], []
@@ -256,8 +256,8 @@ class ReplayBufferGreedy(object):
                        "rel_pos": None,
                        "has_lesion": None,
                        "terminals": None}
-        self.resizer_small = Resize([configs_network.encoder_params["patch_size"]] * 3)
-        self.resizer_large = Resize([configs_network.encoder_params["patch_size"] * 2] * 3)
+        self.resizer_small = Resize([configs_network.encoder_params["patch_size"]] * 3, mode="trilinear")
+        self.resizer_large = Resize([configs_network.encoder_params["patch_size"] * 2] * 3, mode="trilinear")
 
     def __repr__(self):
         out_str = ""

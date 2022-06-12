@@ -17,12 +17,13 @@ from SemesterProject2.helpers.utils import create_log_dir_name
 
 if __name__ == '__main__':
     """
-    python scripts/run_vit_greedy_cartesian.py --num_updates 5000 --if_clip_grad 0.1 --grid_size 3
+    python scripts/run_vit_greedy_cartesian.py --num_updates 5 --if_clip_grad 0.1 --grid_size 3 --init_size_side 32
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_updates", type=int, default=5000)
     parser.add_argument("--if_clip_grad", type=float, default=None)
     parser.add_argument("--grid_size", type=int, default=3)
+    parser.add_argument("--init_size_side", type=int, default=16)
     args = parser.parse_args()
     trainer_params = vars(args).copy()
 
@@ -46,14 +47,15 @@ if __name__ == '__main__':
     log_params = {
         "num_updates": trainer_params["num_updates"],
         "if_clip_grad": args.if_clip_grad,
-        "grid_size": trainer_params["grid_size"][0]
+        "grid_size": trainer_params["grid_size"][0],
+        "init_size_side": trainer_params["init_size_side"]
     }
 
     log_dir_name = create_log_dir_name(time_stamp, log_params)
 
     trainer_params.update({
-        "log_dir": f"./run/vit_greedy_cartesian/{log_dir_name}",
-        "params_save_dir": f"./params/vit_greedy_cartesian/{log_dir_name}"
+        "log_dir": f"./run/vit_greedy_cartesian/one_vol/{log_dir_name}",
+        "params_save_dir": f"./params/vit_greedy_cartesian/one_vol/{log_dir_name}"
     })
 
     args = parser.parse_args()
@@ -62,6 +64,11 @@ if __name__ == '__main__':
         "grid_size": tuple([trainer_params["grid_size"] for _ in range(3)])
     })
     trainer_params["if_clip_grad"] = args.if_clip_grad
+    trainer_params["init_size"] = tuple([trainer_params["init_size_side"] for _ in range(3)])
+    if trainer_params["init_size"] == (32, 32, 32):
+        trainer_params["translation_scale"] = 0.5  # step-size 16
+    elif trainer_params["init_size"] == (64, 64, 64):
+        trainer_params["translation_scale"] = 0.25  # step-size 16
 
     ### VM only ###
     orig_stdout = sys.stdout
@@ -70,7 +77,7 @@ if __name__ == '__main__':
                     "w")
     sys.stdout = log_file
     sys.stderr = log_file
-    ### end of VM only block ###
+    # ### end of VM only block ###
 
     cartesian_trainer = CartesianTrainer(trainer_params)
     cartesian_trainer.train()

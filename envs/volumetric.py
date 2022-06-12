@@ -59,6 +59,7 @@ class Volumetric(Env):
         np.random.seed(seed)
         index = np.random.randint(len(self.dataset))
         index = self.index if self.index is not None else index
+        print(f"from Volumetric: ind: {index}")
         self.vol, self.seg, self.bbox_coord = self.dataset[index]
         self.center = None
         self.size = np.array(self.params["init_size"])

@@ -80,7 +80,8 @@ lunar_lander_actor_opt_params = {
 volumetric_env_params = base_env_params.copy()
 volumetric_env_params.update({
     "max_ep_len": 30,
-    "init_size": (16, 16, 16),
+    "init_size": (64, 64, 64),  # TODO: only change this; (16, 16, 16)
+    "fixed_size": (16, 16, 16),
     "dice_reward_weighting": 100,  # per DQN paper on DCE-MRI, the final bonus
     "fuel_cost": -0.03,
     "dice_score_small_th": 1e-4,
@@ -103,12 +104,17 @@ volumetric_env_params.update({
     "num_updates_clf": 15,
     "false_neg_weight": 1,
     "conf_score_threshold": 0.5,
-    "conf_score_threshold_pred": 0.9,
+    "conf_score_threshold_pred": 0.2,
     "pred_zeros_threshold": 1e-2,
     "translation_scale": 3 / 4,
     "iou_threshold": 1e-6,
     "init_perturb_std_ratio": 1  # e.g: 2 * 16
 })
+
+if volumetric_env_params["init_size"] == (32, 32, 32):
+    volumetric_env_params["translation_scale"] = 0.5  # step-size 16
+elif volumetric_env_params["init_size"] == (64, 64, 64):
+    volumetric_env_params["translation_scale"] = 0.25  # step-size 16
 
 volumetric_sampling_policy_args = {
     "max_ep_len": volumetric_env_params["max_ep_len"],

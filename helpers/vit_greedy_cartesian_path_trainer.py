@@ -1,6 +1,8 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import SemesterProject2.helpers.pytorch_utils as ptu
+import SemesterProject2.scripts.configs_data_aug as configs_data_aug
 
 from SemesterProject2.helpers.modules.vit_agent_modules import EncoderGreedy, MLPHead
 from torch.utils.tensorboard import SummaryWriter
@@ -8,6 +10,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from SemesterProject2.helpers.deterministic_path_sampler import DeterministicPathSampler
 from SemesterProject2.helpers.data_processing import VolumetricDataset
 from SemesterProject2.helpers.utils import create_param_dir
+from SemesterProject2.agents.vit_greedy_predictor import ViTGreedyPredictor
 
 
 class CartesianTrainer(object):
@@ -37,6 +40,49 @@ class CartesianTrainer(object):
         test_ds = VolumetricDataset(self.params["hdf5_filename"], self.params["train_test_filename"], "test")
         self.sampler_train = DeterministicPathSampler(train_ds, self.params)
         self.sampler_test = DeterministicPathSampler(test_ds, self.params)
+
+        ### training & evaluating on one volumne only ###
+        predictor_args = self.params.copy()
+        predictor_args.update({
+            "hdf5_filename": configs_data_aug.hdf5_filename,
+            "data_splitted_filename": configs_data_aug.data_splitted_filename,
+            "mode": "train",
+            "seed": None,
+            "index": 50  # TODO: to change
+        })
+        predictor_args.update({
+            "video_save_dir": None,  # not used
+            "mode_pred": "cartesian",
+            "grid_size": (7, 7, 7),
+            "param_paths": {
+                "encoder": None,
+                "clf_head": None,
+                "patch_pred_head": None
+            },
+            "notebook": self.params["if_notebook"]  # should be set already
+        })
+        predictor_arg_dict = {
+            "x": predictor_args.copy(),
+            "y": predictor_args.copy(),
+            "z": predictor_args.copy()
+        }
+        order_dict = {
+            "x": "zyx",
+            "y": "xzy",
+            "z": "yxz"
+        }
+        for key in predictor_arg_dict:
+            predictor_arg_dict[key]["order"] = order_dict[key]
+
+        self.predictors = {}
+        for key in predictor_arg_dict:
+            predictor_iter = ViTGreedyPredictor(predictor_arg_dict[key])
+            predictor_iter.agent.encoder = self.encoder
+            predictor_iter.agent.clf_head = self.clf_head
+            predictor_iter.agent.patch_pred_head = self.patch_pred_head
+            self.predictors[key] = predictor_iter
+        ### end of block ###
+
         self.ce_loss = nn.CrossEntropyLoss()
         self.writer = SummaryWriter(self.params["log_dir"])
         self.global_steps = {"train": 0, "eval": 0, "epoch": 0}
@@ -97,6 +143,13 @@ class CartesianTrainer(object):
         for _ in pbar:
             train_log_dicts = self.train_()
             eval_log_dicts = self.eval_()
+
+            # logging
+            ### training on one volume only ###
+            self.end_of_epoch_eval_()
+            ### end of block ###
+            self.global_steps["epoch"] += 1
+            print("-" * 100)
 
             try:
                 eval_last_log_dict = eval_log_dicts[-1]
@@ -195,6 +248,41 @@ class CartesianTrainer(object):
             # })
 
             return log_dict
+
+    @torch.no_grad()
+    def end_of_epoch_eval_(self):
+        bbox_dict = {}
+        score_dict = {}
+        log_dict = {}
+        for key in self.predictors:
+            predictor_iter = self.predictors[key]
+            bboxes, scores, _ = predictor_iter.predict_cartesian_()
+            selected_bboxes, selected_scores = predictor_iter.nms_(bboxes, scores)
+            bbox_dict[key] = selected_bboxes
+            score_dict[key] = selected_scores
+            precision_val, recall_val = predictor_iter.evaluate_faster(selected_bboxes)
+            predictor_iter.trajectory = predictor_iter.init_trajectory_()
+            log_dict.update({
+                f"epoch_{key}_precision": precision_val,
+                f"epoch_{key}_recall": recall_val
+            })
+        all_selected_bboxes = []
+        all_selected_scores = []
+        for key in bbox_dict:
+            all_selected_bboxes.append(bbox_dict[key])
+            all_selected_scores.append(score_dict[key])
+        all_selected_bboxes = np.concatenate(all_selected_bboxes, axis=0)  # list[(N, 6)] -> (N', 6)
+        all_selected_scores = np.concatenate(all_selected_scores, axis=0)  # list[(N,)] -> (N')
+        all_selected_bboxes, all_selected_scores = predictor_iter.nms_(all_selected_bboxes, all_selected_scores)
+        precision_val, recall_val = predictor_iter.evaluate_faster(all_selected_bboxes)
+        log_dict.update({
+            f"epoch_precision": precision_val,
+            f"epoch_recall": recall_val
+        })
+
+        for key, val in log_dict.items():
+            self.writer.add_scalar(key, val, self.global_steps["epoch"])
+            print(f"{key}: {val: .3f}")
 
     @torch.no_grad()
     def compute_statistics_(self, X_pred, X_gt):

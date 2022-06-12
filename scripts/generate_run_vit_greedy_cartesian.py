@@ -19,7 +19,7 @@ eval "$(conda shell.bash hook)"
 conda activate RL
 cd ../SemesterProject2
 
-python scripts/run_vit_greedy_cartesian.py --num_updates {hyper_param_dict["num_updates"]} --if_clip_grad {hyper_param_dict["if_clip_grad"]} --grid_size {hyper_param_dict["grid_size"]}"""
+python scripts/run_vit_greedy_cartesian.py --num_updates {hyper_param_dict["num_updates"]} --if_clip_grad {hyper_param_dict["if_clip_grad"]} --grid_size {hyper_param_dict["grid_size"]} --init_size_side {hyper_param_dict["init_size_side"]}"""
 
     return bash_script
 
@@ -41,9 +41,16 @@ if __name__ == '__main__':
     hyper_params = dict()
     # set 1
     hyper_params[1] = [
-            {"num_updates": 5000, "if_clip_grad": 1, "grid_size": 6},
-            {"num_updates": 5000, "if_clip_grad": 1, "grid_size": 7},
-            {"num_updates": 5000, "if_clip_grad": 1, "grid_size": 8}
+            {"num_updates": 5000, "if_clip_grad": 1, "grid_size": 6, "init_size_side": 16},
+            {"num_updates": 5000, "if_clip_grad": 1, "grid_size": 7, "init_size_side": 16},
+            {"num_updates": 5000, "if_clip_grad": 1, "grid_size": 8, "init_size_side": 16}
+    ]
+
+    # set 2
+    hyper_params[2] = [
+        {"num_updates": 5000, "if_clip_grad": 1, "grid_size": 7, "init_size_side": 16},
+        {"num_updates": 5000, "if_clip_grad": 1, "grid_size": 7, "init_size_side": 32},
+        {"num_updates": 5000, "if_clip_grad": 1, "grid_size": 8, "init_size_side": 64}
     ]
 
     parser = argparse.ArgumentParser()

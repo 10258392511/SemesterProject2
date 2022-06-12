@@ -4,6 +4,7 @@ import gym
 import moviepy.editor as editor
 import os
 
+from monai.transforms import Resize
 from typing import List
 from moviepy.video.io.bindings import mplfig_to_npimage
 
@@ -171,3 +172,15 @@ def convert_to_rel_pos(pos: np.ndarray, size: np.ndarray):
     rel_pos = rel_pos / size
 
     return rel_pos
+
+def resize_patch(patch: np.ndarray, resizer: Resize):
+    """
+    patch: (T, B, C, P', P', P') or (T, B, C, 2P', 2P', 2P')
+    resizer: to (C, P, P, P) or (C, 2P, 2P, 2P)
+    """
+    patch_shape = patch.shape
+    patch_reshape = patch.reshape((-1, *patch_shape[3:]))
+    patch_resized = resizer(patch_reshape)
+    patch_out = patch_resized.reshape((*patch_shape[:3], *resizer.spatial_size))
+
+    return patch_out

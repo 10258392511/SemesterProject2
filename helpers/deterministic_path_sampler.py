@@ -1,9 +1,12 @@
 import numpy as np
 import random
+import SemesterProject2.scripts.configs_network as configs_network
 
+from monai.transforms import Resize
 from itertools import cycle, product
 from SemesterProject2.helpers.data_processing import VolumetricDataset
-from SemesterProject2.helpers.utils import center_size2start_end, start_size2center_size, convert_to_rel_pos
+from SemesterProject2.helpers.utils import center_size2start_end, start_size2center_size, convert_to_rel_pos, \
+    resize_patch
 
 
 class DeterministicPathSampler(object):
@@ -28,6 +31,9 @@ class DeterministicPathSampler(object):
         self.step_size = (self.size * self.params["translation_scale"]).astype(int)
         self.xyz2ind = {"x": 2, "y": 1, "z": 0}
         self.sign2float = {"+": 1, "-": -1}
+        self.resizer_small = Resize([configs_network.encoder_params["patch_size"]] * 3, mode="trilinear")
+        self.resizer_large = Resize([configs_network.encoder_params["patch_size"] * 2] * 3, mode="trilinear")
+        self.index = 50
 
     def init_grid_(self):
         grid_w, grid_h, grid_d = self.params["grid_size"]
@@ -45,27 +51,45 @@ class DeterministicPathSampler(object):
         Returns: list[(T, N, 1, P, P, P), (T, N, 1, 2P, 2P, 2P), (T, N, 3),
         (1, N, 1, P, P, P), (1, N, 1, 2P, 2P, 2P), (1, N, 3), (N,)]
         """
-        ind = np.random.randint(len(self.vol_ds))
+        # TODO: change to training set index 50
+        if self.index is None:
+            ind = np.random.randint(len(self.vol_ds))
+        else:
+            ind = self.index
+        print(f"from sampler: ind: {ind}")
         self.vol, self.seg, self.bboxes = self.vol_ds[ind]
         self.init_grid_()
-        path_len = np.random.randint(1, self.params["num_steps_to_memorize"] + 1)
+        # path_len = np.random.randint(1, self.params["num_steps_to_memorize"] + 1)
+        path_len = self.params["num_steps_to_memorize"]
         samples = []
         try:
             samples.append(self.sample_lesion_region_(path_len))
         except Exception as e:
             print(e)
 
-        num_lesion_normal_paths = 0
+        # num_lesion_normal_paths = 0
+        # num_trials = 0
+        # while num_lesion_normal_paths == 0:
+        #     num_trials += 1
+        #     if num_trials == 10:
+        #         break
+        #     try:
+        #         samples.append(self.sample_lesion_region_normal_(path_len))
+        #         num_lesion_normal_paths += 1
+        #     except Exception as e:
+        #         # raise Exception
+        #         print(e)
+
+        num_normal_paths = 0
         num_trials = 0
-        while num_lesion_normal_paths == 0:
+        while num_normal_paths == 0:
             num_trials += 1
             if num_trials == 10:
                 break
             try:
-                samples.append(self.sample_lesion_region_normal_(path_len))
-                num_lesion_normal_paths += 1
+                samples.append(self.sample_normal_(path_len))
+                num_normal_paths += 1
             except Exception as e:
-                # raise Exception
                 print(e)
 
         try:
@@ -85,7 +109,22 @@ class DeterministicPathSampler(object):
             except Exception as e:
                 print(e)
         # TODO: consider make it a large batch
-        return samples
+        # TODO: resize all samples here: might need to reshape to (N', P, P, P) first
+
+        samples_out = []
+        for sample in samples:
+            new_sample = [None for _ in range(len(sample))]
+            new_sample[0] = resize_patch(sample[0], self.resizer_small)
+            new_sample[1] = resize_patch(sample[1], self.resizer_large)
+            new_sample[2] = sample[2]
+            new_sample[3] = resize_patch(sample[3], self.resizer_small)
+            new_sample[4] = resize_patch(sample[4], self.resizer_large)
+            new_sample[5] = sample[5]
+            new_sample[6] = sample[6]
+            samples_out.append(tuple(new_sample))
+
+        # return samples
+        return samples_out
 
     def sample_lesion_region_(self, path_len):
         """

@@ -23,7 +23,7 @@ class FixedSizeSampingPolicy(BasePolicy):
         All: ndarray
         obs: X_small: (P, P, P), X_large: (2P, 2P, 2P), center: (3,), size: (3,)
         """
-        _, _, center, size = obs
+        _, _, center, size = obs  # no need to resize
         action = random.choice(self.action_space)
         next_center = (center + action * size).astype(int)
         next_size = size

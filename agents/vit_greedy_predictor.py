@@ -5,7 +5,9 @@ import torch
 import torch.nn as nn
 import os
 import SemesterProject2.helpers.pytorch_utils as ptu
+import SemesterProject2.scripts.configs_network as configs_network
 
+from monai.transforms import Resize
 from itertools import product
 from SemesterProject2.agents.vit_greedy_agent import ViTGreedyAgent
 from SemesterProject2.envs.volumetric import VolumetricForGreedy
@@ -29,9 +31,12 @@ class ViTGreedyPredictor(object):
         self.env = VolumetricForGreedy(params)
         self.env.reset()
         self.agent = ViTGreedyAgent(params, self.env)
-        self.agent.load_encoder(self.params["param_paths"]["encoder"])
-        self.agent.load_heads(self.params["param_paths"]["patch_pred_head"],
-                              self.params["param_paths"]["clf_head"])
+        if self.params["param_paths"]["encoder"] is not None:
+            self.agent.load_encoder(self.params["param_paths"]["encoder"])
+        if self.params["param_paths"]["patch_pred_head"] is not None and \
+            self.params["param_paths"]["clf_head"] is not None:
+            self.agent.load_heads(self.params["param_paths"]["patch_pred_head"],
+                                  self.params["param_paths"]["clf_head"])
         if self.params["mode_pred"] != "explore":
             self.ordering = {"z": 0, "y": 1, "x": 2}
             self.trajectory = self.init_trajectory_()  # [(X_pos, terminal)], generator
@@ -50,6 +55,8 @@ class ViTGreedyPredictor(object):
         self.action_space = list(product([-self.params["translation_scale"], 0, self.params["translation_scale"]],
                                          repeat=3))
         self.action_space = [np.array(action) for action in self.action_space if action != (0, 0, 0)]
+        self.resizer_small = Resize([configs_network.encoder_params["patch_size"]] * 3, mode="trilinear")
+        self.resizer_large = Resize([configs_network.encoder_params["patch_size"] * 2] * 3, mode="trilinear")
 
     @torch.no_grad()
     def predict(self, **kwargs):
@@ -81,6 +88,24 @@ class ViTGreedyPredictor(object):
         dice_scores = np.array(dice_scores)
 
         return dice_scores, dice_scores > self.params["dice_score_small_th"]
+
+    @torch.no_grad()
+    def evaluate_faster(self, bboxes):
+        if len(bboxes) == 0:
+            return 0., 0.
+        iou_matrix = np.zeros((len(self.env.bbox_coord), len(bboxes)))  # (N_gt_boxes, N_pred_boxes)
+        for i, bbox_gt in enumerate(self.env.bbox_coord):
+            half_len = len(bbox_gt) // 2
+            bbox_gt_start, bbox_gt_end = start_size2start_end(bbox_gt[:half_len], bbox_gt[half_len:])
+            bbox_gt = np.concatenate([bbox_gt_start, bbox_gt_end], axis=-1)
+            for j, bbox in enumerate(bboxes):
+                iou_matrix[i, j] = self.iou_(bbox_gt, bbox)
+
+        iou_matrix_th = (iou_matrix > self.params["iou_threshold"])
+        recall_val = np.max(iou_matrix_th, axis=1).sum() / iou_matrix_th.shape[0]
+        precision_val = np.max(iou_matrix_th, axis=0).sum() / iou_matrix_th.shape[1]
+
+        return precision_val, recall_val
 
     @torch.no_grad()
     def render_lesion_slices(self, bboxes):
@@ -209,8 +234,11 @@ class ViTGreedyPredictor(object):
         X_small: (P, P, P), X_large: (2P, 2P, 2P), X_pos: (3,)
         """
         X_pos = convert_to_rel_pos(X_pos, np.array(self.env.vol.shape[::-1]))
-        X_small = X_small[None, None, None, ...]  # (1, 1, 1, P, P, P)
-        X_large = X_large[None, None, None, ...]  # (1, 1, 1, 2P, 2P, 2P)
+        # TODO: resize
+        X_small = self.resizer_small(X_small[None, ...])  # (1, P, P, P)
+        X_large = self.resizer_large(X_large[None, ...])  # (1, 2P, 2P, 2P)
+        X_small = X_small[None, None, ...]  # (1, 1, 1, P, P, P)
+        X_large = X_large[None, None, ...]  # (1, 1, 1, 2P, 2P, 2P)
         X_pos = X_pos[None, None, ...]  # (1, 1, 3)
         if self.obs_buffer["rel_pos"] is None:
             self.obs_buffer["patches_small"] = X_small
@@ -294,7 +322,7 @@ class ViTGreedyPredictor(object):
         return np.array(selected_bboxes), np.array(selected_scores)
 
     def iou_(self, bbox1, bbox2):
-        # bbox1, bbox2: (6,)
+        # bbox1, bbox2: (6,): start, end
         def compute_vol(start, end):
             sides = np.maximum(end - start, 0)
 
@@ -345,8 +373,8 @@ class ViTGreedyPredictor(object):
             X_clf_pred = torch.softmax(X_clf_pred, dim=-1)
             score_pred = X_clf_pred[0, 1].item()
             all_scores.append(score_pred)
-            # if score_pred > self.params["conf_score_threshold_pred"]:
-            if score_pred > 0.5:
+            if score_pred > self.params["conf_score_threshold_pred"]:
+            # if score_pred > 0.5:
                 start, end = center_size2start_end(X_pos_orig, X_size)
                 bboxes.append(np.concatenate([start, end], axis=-1))
                 scores.append(score_pred)

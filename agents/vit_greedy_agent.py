@@ -5,6 +5,7 @@ import SemesterProject2.helpers.pytorch_utils as ptu
 import SemesterProject2.scripts.configs_network as configs_network
 
 from torch.distributions import Normal
+from monai.transforms import Resize
 from sklearn.metrics import precision_score, recall_score, f1_score
 from itertools import product
 from SemesterProject2.agents.base_agent import BaseAgent
@@ -308,6 +309,7 @@ class ViTGreedyAgent(BaseAgent):
         X_small: (P, P, P), X_large: (2P, 2P, 2P), X_pos: (3,)
         """
         X_pos = convert_to_rel_pos(X_pos, np.array(self.env.vol.shape[::-1]))
+        # TODO: resize here
         X_small = X_small[None, None, None, ...]  # (1, 1, 1, P, P, P)
         X_large = X_large[None, None, None, ...]  # (1, 1, 1, 2P, 2P, 2P)
         X_pos = X_pos[None, None, ...]  # (1, 1, 3)
