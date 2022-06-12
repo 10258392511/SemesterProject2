@@ -24,6 +24,7 @@ if __name__ == '__main__':
     parser.add_argument("--if_clip_grad", type=float, default=None)
     parser.add_argument("--grid_size", type=int, default=3)
     parser.add_argument("--init_size_side", type=int, default=16)
+    parser.add_argument("--print_interval", type=int, default=10)
     args = parser.parse_args()
     trainer_params = vars(args).copy()
 

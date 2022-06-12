@@ -140,13 +140,14 @@ class CartesianTrainer(object):
         pbar = trange(self.params["num_updates"], desc="epochs")
 
         best_metric = 0
-        for _ in pbar:
+        for epoch in pbar:
             train_log_dicts = self.train_()
             eval_log_dicts = self.eval_()
 
             # logging
             ### training on one volume only ###
-            self.end_of_epoch_eval_()
+            if epoch % self.params["print_interval"] == 0 or epoch == self.params["num_updates"] - 1:
+                self.end_of_epoch_eval_()
             ### end of block ###
             self.global_steps["epoch"] += 1
             print("-" * 100)
