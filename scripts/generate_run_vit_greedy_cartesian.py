@@ -50,7 +50,7 @@ if __name__ == '__main__':
     hyper_params[2] = [
         {"num_updates": 5000, "if_clip_grad": 1, "grid_size": 7, "init_size_side": 16},
         {"num_updates": 5000, "if_clip_grad": 1, "grid_size": 7, "init_size_side": 32},
-        {"num_updates": 5000, "if_clip_grad": 1, "grid_size": 8, "init_size_side": 64}
+        {"num_updates": 5000, "if_clip_grad": 1, "grid_size": 7, "init_size_side": 64}
     ]
 
     parser = argparse.ArgumentParser()

@@ -65,7 +65,9 @@ if __name__ == '__main__':
     })
     trainer_params["if_clip_grad"] = args.if_clip_grad
     trainer_params["init_size"] = tuple([trainer_params["init_size_side"] for _ in range(3)])
-    if trainer_params["init_size"] == (32, 32, 32):
+    if trainer_params["init_size"] == (16, 16, 16):
+        trainer_params["translation_scale"] = 0.75  # step-size 12
+    elif trainer_params["init_size"] == (32, 32, 32):
         trainer_params["translation_scale"] = 0.5  # step-size 16
     elif trainer_params["init_size"] == (64, 64, 64):
         trainer_params["translation_scale"] = 0.25  # step-size 16

@@ -112,6 +112,8 @@ volumetric_env_params.update({
 })
 
 if volumetric_env_params["init_size"] == (32, 32, 32):
+    volumetric_env_params["translation_scale"] = 0.75
+elif volumetric_env_params["init_size"] == (32, 32, 32):
     volumetric_env_params["translation_scale"] = 0.5  # step-size 16
 elif volumetric_env_params["init_size"] == (64, 64, 64):
     volumetric_env_params["translation_scale"] = 0.25  # step-size 16
