@@ -89,7 +89,7 @@ class ViTGreedyAgentTrainer(object):
             act = self.agent.get_action((X_small, X_large, X_pos, X_size))
             (X_small, X_large, X_pos, X_size), _, done, info = self.agent.env.step(act)
             # TODO: comment out
-            # self.agent.env.render()
+            self.agent.env.render()
             if if_record_video:
                 train_img_clips.append(self.agent.env.render("rgb_array"))
 
@@ -148,7 +148,7 @@ class ViTGreedyAgentTrainer(object):
                 act = self.eval_policy.get_action((X_small, X_large, X_pos, X_size))
                 (X_small, X_large, X_pos, X_size), _, done, info = self.eval_env.step(act)
                 # TODO: comment out
-                # self.eval_env.render()
+                self.eval_env.render()
                 self.eval_replay_buffer.add_to_buffer(X_small, X_large, X_pos, done, info)
                 if done:
                     break
@@ -192,8 +192,13 @@ class ViTGreedyAgentTrainer(object):
         best_eval_f1, best_eval_acc = 0, 0
         for i in pbar:
             if_print = (i % self.params["print_interval"] == 0)
-            train_log_dict = self.train_(**kwargs)
-            eval_log_dict = self.eval_(**kwargs)
+            train_log_dict = {}
+            eval_log_dict = {}
+            try:
+                train_log_dict = self.train_(**kwargs)
+                eval_log_dict = self.eval_(**kwargs)
+            except Exception as e:
+                print(f"{e}, from .train()")
             # TODO: consider scheduler
             log_dict.update(train_log_dict)
             log_dict.update(eval_log_dict)
@@ -255,7 +260,7 @@ class ViTGreedyAgentTrainer(object):
             action = self.agent.get_action((X_small, X_large, X_pos, X_size))
             (X_small, X_large, X_pos, X_size), _, done, _ = self.eval_env.step(action)
             # TODO: comment out
-            # self.eval_env.render()
+            self.eval_env.render()
             img_clips.append(self.eval_env.render("rgb_array"))
             if num_steps == max_ep_len:
                 done = True

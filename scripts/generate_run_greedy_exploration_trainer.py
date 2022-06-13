@@ -19,7 +19,7 @@ eval "$(conda shell.bash hook)"
 conda activate RL
 cd ../SemesterProject2
 
-python scripts/run_greedy_exploration_trainer.py --num_episodes {hyper_param_dict["num_episodes"]} --batch_size {hyper_param_dict["batch_size"]} --if_clip_grad --grid_size {hyper_param_dict["grid_size"]}"""
+python scripts/run_greedy_exploration_trainer.py --num_episodes {hyper_param_dict["num_episodes"]} --batch_size {hyper_param_dict["batch_size"]} --if_clip_grad --grid_size {hyper_param_dict["grid_size"]} --init_size_side {hyper_param_dict["init_size_side"]}"""
 
     return bash_script
 
@@ -41,8 +41,15 @@ if __name__ == '__main__':
     hyper_params = dict()
     # set 1
     hyper_params[1] = [
-            {"num_episodes": 300, "batch_size": 2, "grid_size": 4},
-            {"num_episodes": 300, "batch_size": 2, "grid_size": 5}
+            {"num_episodes": 300, "batch_size": 2, "grid_size": 4, "init_size_side": 16},
+            {"num_episodes": 300, "batch_size": 2, "grid_size": 5, "init_size_side": 16}
+    ]
+
+    # set 2
+    hyper_params[2] = [
+        {"num_episodes": 300, "batch_size": 2, "grid_size": 5, "init_size_side": 16},
+        {"num_episodes": 300, "batch_size": 2, "grid_size": 5, "init_size_side": 32},
+        {"num_episodes": 300, "batch_size": 2, "grid_size": 5, "init_size_side": 64},
     ]
 
     parser = argparse.ArgumentParser()

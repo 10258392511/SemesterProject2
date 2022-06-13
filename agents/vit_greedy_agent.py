@@ -53,6 +53,8 @@ class ViTGreedyAgent(BaseAgent):
         self.action_space = list(product([-self.params["translation_scale"], 0, self.params["translation_scale"]],
                                          repeat=3))
         self.action_space = [np.array(action) for action in self.action_space if action != (0, 0, 0)]
+        self.resizer_small = Resize([configs_network.encoder_params["patch_size"]] * 3, mode="trilinear")
+        self.resizer_large = Resize([configs_network.encoder_params["patch_size"] * 2] * 3, mode="trilinear")
 
     def can_sample(self, batch_size):
         return self.replay_buffer.can_sample(batch_size)
@@ -310,8 +312,10 @@ class ViTGreedyAgent(BaseAgent):
         """
         X_pos = convert_to_rel_pos(X_pos, np.array(self.env.vol.shape[::-1]))
         # TODO: resize here
-        X_small = X_small[None, None, None, ...]  # (1, 1, 1, P, P, P)
-        X_large = X_large[None, None, None, ...]  # (1, 1, 1, 2P, 2P, 2P)
+        X_small = self.resizer_small(X_small[None, ...])  # (1, P, P, P)
+        X_large = self.resizer_large(X_large[None, ...])  # (1, 2P, 2P, 2P)
+        X_small = X_small[None, None, ...]  # (1, 1, 1, P, P, P)
+        X_large = X_large[None, None, ...]  # (1, 1, 1, 2P, 2P, 2P)
         X_pos = X_pos[None, None, ...]  # (1, 1, 3)
         if self.obs_buffer["rel_pos"] is None:
             self.obs_buffer["patches_small"] = X_small

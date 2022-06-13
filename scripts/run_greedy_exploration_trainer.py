@@ -1,7 +1,7 @@
 import sys
 
-# path = "D:\\testings\\Python\\TestingPython"
-path = "/home/zhexwu/Researches/biomedical_imaging"
+path = "D:\\testings\\Python\\TestingPython"
+# path = "/home/zhexwu/Researches/biomedical_imaging"
 if path not in sys.path:
     sys.path.append(path)
 
@@ -21,7 +21,7 @@ from pprint import pprint
 
 if __name__ == '__main__':
     """
-    python scripts/run_greedy_exploration_trainer.py --num_episodes 2 --batch_size 2 --print_interval 1 --if_clip_grad --grid_size 3
+    python scripts/run_greedy_exploration_trainer.py --num_episodes 2 --batch_size 2 --print_interval 1 --if_clip_grad --grid_size 3 --init_size_side 32
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_episodes", type=int, default=1000)
@@ -29,6 +29,7 @@ if __name__ == '__main__':
     parser.add_argument("--print_interval", type=int, default=20)
     parser.add_argument("--if_clip_grad", action="store_true")
     parser.add_argument("--grid_size", type=int, default=3)
+    parser.add_argument("--init_size_side", type=int, default=16)
     args = parser.parse_args()
 
     train_env_args = {
@@ -38,6 +39,13 @@ if __name__ == '__main__':
         "seed": None
     }
     train_env_args.update(configs_ac.volumetric_env_params)
+    train_env_args["init_size"] = tuple([args.init_size_side for _ in range(3)])
+    if train_env_args["init_size"] == (16, 16, 16):
+        train_env_args["translation_scale"] = 0.75  # step-size 12
+    elif train_env_args["init_size"] == (32, 32, 32):
+        train_env_args["translation_scale"] = 0.5  # step-size 16
+    elif train_env_args["init_size"] == (64, 64, 64):
+        train_env_args["translation_scale"] = 0.25  # step-size 16
     train_env = VolumetricForGreedy(train_env_args)
 
     test_env_args = {
@@ -47,6 +55,13 @@ if __name__ == '__main__':
         "seed": None
     }
     test_env_args.update(configs_ac.volumetric_env_params)
+    test_env_args["init_size"] = tuple([args.init_size_side for _ in range(3)])
+    if test_env_args["init_size"] == (16, 16, 16):
+        test_env_args["translation_scale"] = 0.75  # step-size 12
+    elif test_env_args["init_size"] == (32, 32, 32):
+        test_env_args["translation_scale"] = 0.5  # step-size 16
+    elif test_env_args["init_size"] == (64, 64, 64):
+        test_env_args["translation_scale"] = 0.25  # step-size 16
     test_env = VolumetricForGreedy(test_env_args)
 
     vit_agent_args = configs_ac.volumetric_env_params.copy()
@@ -71,23 +86,31 @@ if __name__ == '__main__':
         "if_clip_grad": vit_trainer_args["if_clip_grad"],
         "num_episodes": vit_trainer_args["num_episodes"],
         "batch_size": vit_trainer_args["batch_size"],
-        "grid_size": vit_trainer_args["grid_size"][0]
+        "grid_size": vit_trainer_args["grid_size"][0],
+        "init_size_side": vit_trainer_args["init_size_side"]
     }
     log_dir_name = create_log_dir_name(time_stamp, log_dir_params)
     vit_trainer_args.update({
-        "log_dir": f"./run/vit_greedy_exploration/{log_dir_name}",
-        "model_save_dir": f"./params/vit_greedy_exploration/{log_dir_name}",
+        "log_dir": f"./run/vit_greedy_exploration/diff_init_sizes/{log_dir_name}",
+        "model_save_dir": f"./params/vit_greedy_exploration/diff_init_sizes/{log_dir_name}",
     })
+    vit_trainer_args["init_size"] = tuple([vit_trainer_args["init_size_side"] for _ in range(3)])
+    if vit_trainer_args["init_size"] == (16, 16, 16):
+        vit_trainer_args["translation_scale"] = 0.75  # step-size 12
+    elif vit_trainer_args["init_size"] == (32, 32, 32):
+        vit_trainer_args["translation_scale"] = 0.5  # step-size 16
+    elif vit_trainer_args["init_size"] == (64, 64, 64):
+        vit_trainer_args["translation_scale"] = 0.25  # step-size 16
     # pprint(vit_trainer_args)
 
-    ### VM only ###
-    orig_stdout = sys.stdout
-    orig_stderr = sys.stderr
-    log_file = open(f"/home/zhexwu/Researches/biomedical_imaging/submission/lesion_detection_log/{log_dir_name}.txt",
-                    "w")
-    sys.stdout = log_file
-    sys.stderr = log_file
-    ### end of VM only block ###
+    # ### VM only ###
+    # orig_stdout = sys.stdout
+    # orig_stderr = sys.stderr
+    # log_file = open(f"/home/zhexwu/Researches/biomedical_imaging/submission/lesion_detection_log/{log_dir_name}.txt",
+    #                 "w")
+    # sys.stdout = log_file
+    # sys.stderr = log_file
+    # ### end of VM only block ###
 
     trainer = ViTGreedyAgentTrainer(vit_trainer_args, vit_greedy_agent, test_env)
     trainer.train(if_record_video=True)

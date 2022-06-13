@@ -145,7 +145,7 @@ class Volumetric(Env):
 
         patch_small, patch_large = self.get_patch_by_center_size(act_center, act_size), \
                                    self.get_patch_by_center_size(act_center, act_size * 2)
-        if not (np.all(np.array(patch_small.shape) > 0) and np.all(np.array(patch_large.shape) > 0)):
+        if not ((np.all(np.array(patch_small.shape) > 0) and np.all(np.array(patch_large.shape) > 0))):
             done = True
         # if not np.all(act_size > 0):
         #     done = True
@@ -163,7 +163,8 @@ class Volumetric(Env):
         try:
             assert np.all(np.array(patch_small.shape) > 0) and np.all(np.array(patch_large.shape) > 0), "shape <= 0"
         except AssertionError:
-            print(f"vol: {self.vol.shape}, center: {self.center}, size: {self.size}")
+            print(f"vol: {self.vol.shape}, center: {self.center}, size: {self.size}, patch small: {patch_small.shape}, "
+                  f"patch large: {patch_large.shape}")
             raise AssertionError
 
         if done:
@@ -190,7 +191,7 @@ class Volumetric(Env):
 
     def is_in_vol_(self, center, size):
         start, end = center_size2start_end(center, size)
-        if np.all(start > 0) and np.all(end <= np.array(self.vol.shape[::-1])):
+        if np.all(start > 0) and np.all(end < np.array(self.vol.shape[::-1])):
             return True
         return False
 
