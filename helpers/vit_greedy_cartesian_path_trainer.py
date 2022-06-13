@@ -145,14 +145,14 @@ class CartesianTrainer(object):
             eval_log_dicts = self.eval_()
 
             # logging
-            ### training on one volume only ###
-            if epoch % self.params["print_interval"] == 0 or epoch == self.params["num_updates"] - 1:
-                self.end_of_epoch_eval_()
-            ### end of block ###
-            self.global_steps["epoch"] += 1
-            print("-" * 100)
-
             try:
+                ### training on one volume only ###
+                if epoch % self.params["print_interval"] == 0 or epoch == self.params["num_updates"] - 1:
+                    self.end_of_epoch_eval_()
+                self.global_steps["epoch"] += 1
+                print("-" * 100)
+                ### end of block ###
+
                 eval_last_log_dict = eval_log_dicts[-1]
                 eval_key = "eval_acc"
                 if best_metric <= eval_last_log_dict[eval_key]:
@@ -161,6 +161,10 @@ class CartesianTrainer(object):
             except Exception as e:
                 print(e)
                 self.save_models_()
+                self.global_steps["epoch"] += 1
+                print("-" * 100)
+            finally:
+                pass
 
     def compute_loss_and_update_(self, sample, if_train=True):
         """
@@ -270,7 +274,10 @@ class CartesianTrainer(object):
         all_selected_bboxes = []
         all_selected_scores = []
         for key in bbox_dict:
-            all_selected_bboxes.append(bbox_dict[key])
+            bbox_iter = bbox_dict[key]
+            if bbox_iter.ndim == 1:
+                bbox_iter = bbox_iter[None, :]
+            all_selected_bboxes.append(bbox_iter)
             all_selected_scores.append(score_dict[key])
         all_selected_bboxes = np.concatenate(all_selected_bboxes, axis=0)  # list[(N, 6)] -> (N', 6)
         all_selected_scores = np.concatenate(all_selected_scores, axis=0)  # list[(N,)] -> (N')
