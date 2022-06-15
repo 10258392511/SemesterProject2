@@ -55,8 +55,8 @@ if __name__ == '__main__':
     log_dir_name = create_log_dir_name(time_stamp, log_params)
 
     trainer_params.update({
-        "log_dir": f"./run/vit_greedy_cartesian/one_vol/{log_dir_name}",
-        "params_save_dir": f"./params/vit_greedy_cartesian/one_vol/{log_dir_name}"
+        "log_dir": f"./run/vit_greedy_cartesian/diff_sizes/{log_dir_name}",
+        "params_save_dir": f"./params/vit_greedy_cartesian/diff_sizes/{log_dir_name}"
     })
 
     args = parser.parse_args()

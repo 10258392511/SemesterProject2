@@ -116,7 +116,7 @@ class CartesianTrainer(object):
         self.clf_head.eval()
 
         log_dicts = []
-        samples = self.sampler_train.sample()
+        samples = self.sampler_test.sample()
         for sample in samples:
             log_dict = self.compute_loss_and_update_(sample, if_train=False)
             log_dicts.append(log_dict)
@@ -146,12 +146,12 @@ class CartesianTrainer(object):
 
             # logging
             try:
-                ### training on one volume only ###
-                if epoch % self.params["print_interval"] == 0 or epoch == self.params["num_updates"] - 1:
-                    self.end_of_epoch_eval_()
-                self.global_steps["epoch"] += 1
-                print("-" * 100)
-                ### end of block ###
+                # ### training on one volume only ###
+                # if epoch % self.params["print_interval"] == 0 or epoch == self.params["num_updates"] - 1:
+                #     self.end_of_epoch_eval_()
+                # self.global_steps["epoch"] += 1
+                # print("-" * 100)
+                # ### end of block ###
 
                 eval_last_log_dict = eval_log_dicts[-1]
                 eval_key = "eval_acc"

@@ -111,7 +111,7 @@ volumetric_env_params.update({
     "init_perturb_std_ratio": 1  # e.g: 2 * 16
 })
 
-if volumetric_env_params["init_size"] == (32, 32, 32):
+if volumetric_env_params["init_size"] == (16, 16, 16):
     volumetric_env_params["translation_scale"] = 0.75
 elif volumetric_env_params["init_size"] == (32, 32, 32):
     volumetric_env_params["translation_scale"] = 0.5  # step-size 16

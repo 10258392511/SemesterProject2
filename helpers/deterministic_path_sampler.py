@@ -33,7 +33,7 @@ class DeterministicPathSampler(object):
         self.sign2float = {"+": 1, "-": -1}
         self.resizer_small = Resize([configs_network.encoder_params["patch_size"]] * 3, mode="trilinear")
         self.resizer_large = Resize([configs_network.encoder_params["patch_size"] * 2] * 3, mode="trilinear")
-        self.index = 50
+        self.index = None
 
     def init_grid_(self):
         grid_w, grid_h, grid_d = self.params["grid_size"]
