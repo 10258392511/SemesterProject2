@@ -1,7 +1,7 @@
 import sys
 
-path = "D:\\testings\\Python\\TestingPython"
-# path = "/home/zhexwu/Researches/biomedical_imaging"
+# path = "D:\\testings\\Python\\TestingPython"
+path = "/home/zhexwu/Researches/biomedical_imaging"
 if path not in sys.path:
     sys.path.append(path)
 
@@ -103,14 +103,14 @@ if __name__ == '__main__':
         vit_trainer_args["translation_scale"] = 0.25  # step-size 16
     # pprint(vit_trainer_args)
 
-    # ### VM only ###
-    # orig_stdout = sys.stdout
-    # orig_stderr = sys.stderr
-    # log_file = open(f"/home/zhexwu/Researches/biomedical_imaging/submission/lesion_detection_log/{log_dir_name}.txt",
-    #                 "w")
-    # sys.stdout = log_file
-    # sys.stderr = log_file
-    # ### end of VM only block ###
+    ### VM only ###
+    orig_stdout = sys.stdout
+    orig_stderr = sys.stderr
+    log_file = open(f"/home/zhexwu/Researches/biomedical_imaging/submission/lesion_detection_log/{log_dir_name}.txt",
+                    "w")
+    sys.stdout = log_file
+    sys.stderr = log_file
+    ### end of VM only block ###
 
     trainer = ViTGreedyAgentTrainer(vit_trainer_args, vit_greedy_agent, test_env)
     trainer.train(if_record_video=True)
