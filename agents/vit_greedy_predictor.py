@@ -373,7 +373,7 @@ class ViTGreedyPredictor(object):
             X_clf_pred = torch.softmax(X_clf_pred, dim=-1)
             score_pred = X_clf_pred[0, 1].item()
             all_scores.append(score_pred)
-            if score_pred > self.params["conf_score_threshold_pred"]:
+            if 0.95 > score_pred > self.params["conf_score_threshold_pred"]:
             # if score_pred > 0.5:
                 start, end = center_size2start_end(X_pos_orig, X_size)
                 bboxes.append(np.concatenate([start, end], axis=-1))
