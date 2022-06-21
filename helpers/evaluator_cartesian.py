@@ -13,6 +13,7 @@ import SemesterProject2.scripts.configs_network as configs_network
 from SemesterProject2.helpers.modules.vit_agent_modules import EncoderGreedy, MLPHead
 from SemesterProject2.helpers.data_processing import VolumetricDataset
 from SemesterProject2.agents.vit_greedy_predictor import ViTGreedyPredictor
+from pprint import pprint
 
 
 def get_param_paths(init_size, params_dir):
@@ -23,6 +24,13 @@ def get_param_paths(init_size, params_dir):
         dirname = f"{params_dir}/vit_greedy_cartesian/diff_sizes/2022_06_15_09_17_12_155409_num_updates_5000_if_clip_grad_1_0_grid_size_7_init_size_side_32"
     elif init_size == (64, 64, 64):
         dirname = f"{params_dir}/vit_greedy_cartesian/diff_sizes/2022_06_15_09_17_12_154825_num_updates_5000_if_clip_grad_1_0_grid_size_7_init_size_side_64"
+
+    # if init_size == (16, 16, 16):
+    #     dirname = f"{params_dir}/vit_greedy_cartesian/one_vol/2022_06_13_08_13_53_487713_num_updates_5000_if_clip_grad_1_0_grid_size_7_init_size_side_16"
+    # elif init_size == (32, 32, 32):
+    #     dirname = f"{params_dir}/vit_greedy_cartesian/one_vol/2022_06_13_08_13_53_487822_num_updates_5000_if_clip_grad_1_0_grid_size_7_init_size_side_32"
+    # elif init_size == (64, 64, 64):
+    #     dirname = f"{params_dir}/vit_greedy_cartesian/one_vol/2022_06_13_08_13_53_488276_num_updates_5000_if_clip_grad_1_0_grid_size_7_init_size_side_64"
 
     if dirname is None:
         raise IndexError
@@ -55,19 +63,20 @@ def evaluation_main(param_dir, save_dir, if_notebook=False):
         "test": {}
     }
 
-    for init_size in ((16, 16, 16), (32, 32, 32), (64, 64, 64)):
-        for threshold in np.arange(0.5, 0.91, 0.1):
-            # for mode in ("train", "test"):
-            for mode in ("test"):
+    for init_size in ((64, 64, 64), (32, 32, 32), (16, 16, 16)):
+        for threshold in np.arange(0.4, 0.91, 0.1):
+            # for mode in ["train", "test"]:
+            for mode in ["test"]:
                 print(f"current: init_size: {init_size}, th: {threshold}, mode: {mode}")
                 # save .csv
-                save_dirname_precision = os.path.join(save_dir, f"{mode}/precision/{init_size[0]}")
+                save_dirname_precision = os.path.join(save_dir, f"{mode}/precision/size_{init_size[0]}")
                 if not os.path.isdir(save_dirname_precision):
                     os.makedirs(save_dirname_precision)
-                save_dirname_recall = os.path.join(save_dir, f"{mode}/recall/{init_size[0]}")
+                save_dirname_recall = os.path.join(save_dir, f"{mode}/recall/size_{init_size[0]}")
                 if not os.path.isdir(save_dirname_recall):
                     os.makedirs(save_dirname_recall)
-                filename = f"th_{threshold: .1f}.csv"
+                filename = f"th_{threshold: .1f}".replace(".", "_")
+                filename = f"{filename}.csv"
                 save_path_precision = os.path.join(save_dirname_precision, filename)
                 save_path_recall = os.path.join(save_dirname_recall, filename)
 
@@ -77,16 +86,18 @@ def evaluation_main(param_dir, save_dir, if_notebook=False):
 
                 # compute avg
                 avg_dict_data = avg_dict[mode]
-                avg_dict_data[threshold] = {
+                avg_dict_data[(threshold, init_size[0])] = {
                     "keys": list(df_precision.keys()),
                     "precision": df_precision.mean().values,
                     "recall": df_recall.mean().values
                 }
 
+                # TODO: comment out "print"
+                pprint(avg_dict_data)
                 print("-" * 100)
 
-    with open(os.path.join(save_dir, "avg_dict.pkl"), "wb") as wf:
-        pickle.dump(avg_dict, wf)
+                with open(os.path.join(save_dir, "avg_dict.pkl"), "wb") as wf:
+                    pickle.dump(avg_dict, wf)
 
 
 def evaluation(init_size, threshold, param_dir, mode="test", if_notebook=False):
@@ -116,8 +127,13 @@ def evaluation(init_size, threshold, param_dir, mode="test", if_notebook=False):
         }
     }
     for index in pbar:
+        # TODO: comment out
+        print(f"current: {index}")
+        # if index != 50:
+        #     continue
         params = {
             "mode": mode,
+            "init_size": init_size,
             "index": index,
             "conf_score_threshold_pred": threshold,
             "param_dir": param_dir,
@@ -125,6 +141,8 @@ def evaluation(init_size, threshold, param_dir, mode="test", if_notebook=False):
         }
         evaluator = Evaluator(params)
         log_dict_iter = evaluator.evaluate()
+        # TODO: comment out print
+        print(log_dict_iter)
         for stat in log_dict_iter:
             assert stat in log_dict
             data_dict_iter = log_dict_iter[stat]
@@ -190,9 +208,9 @@ class Evaluator(object):
         self.predictors = {}
         for key in predictor_arg_dict:
             predictor_iter = ViTGreedyPredictor(predictor_arg_dict[key])
-            predictor_iter.agent.encoder = self.encoder
-            predictor_iter.agent.clf_head = self.clf_head
-            predictor_iter.agent.patch_pred_head = self.patch_pred_head
+            # predictor_iter.agent.encoder = self.encoder
+            # predictor_iter.agent.clf_head = self.clf_head
+            # predictor_iter.agent.patch_pred_head = self.patch_pred_head
             self.predictors[key] = predictor_iter
 
     def evaluate(self):
@@ -224,8 +242,11 @@ class Evaluator(object):
         all_selected_scores = []
         for key in bbox_dict:
             bbox_iter = bbox_dict[key]
-            if bbox_iter.ndim == 1:
-                bbox_iter = bbox_iter[None, :]
+            # print(bbox_iter.shape)
+            # if bbox_iter.ndim == 1:
+            #     bbox_iter = bbox_iter[None, :]
+            if np.any(np.array(bbox_iter.shape) == 0):
+                continue
             all_selected_bboxes.append(bbox_iter)
             all_selected_scores.append(score_dict[key])
         all_selected_bboxes = np.concatenate(all_selected_bboxes, axis=0)  # list[(N, 6)] -> (N', 6)

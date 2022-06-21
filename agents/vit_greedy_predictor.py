@@ -373,7 +373,7 @@ class ViTGreedyPredictor(object):
             X_clf_pred = torch.softmax(X_clf_pred, dim=-1)
             score_pred = X_clf_pred[0, 1].item()
             all_scores.append(score_pred)
-            if 0.95 > score_pred > self.params["conf_score_threshold_pred"]:
+            if score_pred > self.params["conf_score_threshold_pred"]:
             # if score_pred > 0.5:
                 start, end = center_size2start_end(X_pos_orig, X_size)
                 bboxes.append(np.concatenate([start, end], axis=-1))
@@ -400,11 +400,15 @@ class ViTGreedyPredictor(object):
             video_dir = os.path.join(self.params["video_save_dir"], f"test_{index}")
         for i in range(self.init_pos_grid.shape[0]):
             init_pos = self.init_pos_grid[i, :]  # (3,)
-            if not self.env.is_in_vol_(init_pos, self.env.size):
+            if not self.env.is_in_vol_(init_pos, 2 * self.env.size):
                 continue
             if if_video:
                 video_path = create_param_dir(video_dir, f"agent_{i}.gif")
-            bboxes_iter, scores_iter = self.predict_explore_iter_(init_pos, if_video, video_path=video_path)
+            bboxes_iter, scores_iter = [], []
+            try:
+                bboxes_iter, scores_iter = self.predict_explore_iter_(init_pos, if_video, video_path=video_path)
+            except Exception:
+                pass
             bboxes += bboxes_iter
             scores += scores_iter
 

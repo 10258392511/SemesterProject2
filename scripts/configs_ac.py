@@ -80,7 +80,7 @@ lunar_lander_actor_opt_params = {
 volumetric_env_params = base_env_params.copy()
 volumetric_env_params.update({
     "max_ep_len": 30,
-    "init_size": (16, 16, 16),  # TODO: only change this; (16, 16, 16)
+    "init_size": (64, 64, 64),  # TODO: only change this; (16, 16, 16)
     "fixed_size": (16, 16, 16),
     "dice_reward_weighting": 100,  # per DQN paper on DCE-MRI, the final bonus
     "fuel_cost": -0.03,
@@ -104,7 +104,7 @@ volumetric_env_params.update({
     "num_updates_clf": 15,
     "false_neg_weight": 1,
     "conf_score_threshold": 0.5,
-    "conf_score_threshold_pred": 0.9,
+    "conf_score_threshold_pred": 0.5,
     "pred_zeros_threshold": 1e-2,
     "translation_scale": 3 / 4,
     "iou_threshold": 1e-6,
