@@ -40,6 +40,13 @@ Without Inhibition of Return (IoR); with IoR, episodes 25 & 30
    <tr>
 </table>
 
+### Larger Bounding Box Size
+<table>
+    <tr>
+        <td><img src="results/vit_greedy/episode_160_size_32.gif" width=200 height=300></td> 
+    </tr>
+</table>
+
 
 ### Grid of Agents in a Testing Volume
 <table>
@@ -70,7 +77,7 @@ Without Inhibition of Return (IoR); with IoR, episodes 25 & 30
 
 
    <tr> 
-        <td><img src="results/vit_greedy/test_16/agent_0.gif" width="200" height=300"></td>
-        <td><img src="results/vit_greedy/test_16/agent_1.gif" width="200" height=300"></td>
+        <td><img src="results/vit_greedy/test_2/size_32/agent_3.gif" width="200" height=300"></td>
+        <td><img src="results/vit_greedy/test_2/size_32/agent_4.gif" width="200" height=300"></td>
     </tr>
 </table>
