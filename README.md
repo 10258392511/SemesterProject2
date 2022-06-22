@@ -37,7 +37,7 @@ Without Inhibition of Return (IoR); with IoR, episodes 25 & 30
     <td><img src="results/vit_greedy/train_without_inhibition_of_return_ep_15.gif" width=200 height=300></td>
     <td><img src="results/vit_greedy/train_with_inhibition_of_return_ep_25.gif" width=200 height=300></td>
     <td><img src="results/vit_greedy/train_with_inhibition_of_return_ep_30.gif" width=200 height=300></td>
-   <tr>
+   </tr>
 </table>
 
 ### Larger Bounding Box Size
