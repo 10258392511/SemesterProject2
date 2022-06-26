@@ -399,7 +399,8 @@ class ViTGreedyPredictor(object):
             index = self.env.index
             video_dir = os.path.join(self.params["video_save_dir"], f"test_{index}")
         for i in range(self.init_pos_grid.shape[0]):
-            init_pos = self.init_pos_grid[i, :]  # (3,)
+            init_pos = self.init_pos_grid[i, :] + np.random.randn() * 16  # (3,)
+            init_pos = init_pos.astype(int)
             if not self.env.is_in_vol_(init_pos, 2 * self.env.size):
                 continue
             if if_video:
@@ -434,7 +435,7 @@ class ViTGreedyPredictor(object):
                 bboxes.append(np.concatenate([start, end], axis=0))
                 scores.append(conf_score)
             # TODO: comment out
-            self.env.render()
+            # self.env.render()
             if if_video:
                 img_clips.append(self.env.render("rgb_array"))
             if num_steps == max_ep_len:
